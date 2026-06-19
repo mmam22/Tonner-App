@@ -190,10 +190,10 @@
         // ──────────────────────────────────────
         let inventory = {};        // { code: { ... } }
         let history = [];          // array of transaction objects
-        let lines = [...DEFAULT_LINES];
-        let aliases = {};
-        let order = [];
-        const DEFAULT_LINES = ['Line 1', 'Line 2', 'Line 3'];
+       const DEFAULT_LINES = ['Line 1', 'Line 2', 'Line 3'];
+       let lines = [...DEFAULT_LINES];
+       let aliases = {};
+       let order = [];
 
         // ──────────────────────────────────────
         // FIREBASE LISTENERS (real-time sync)
