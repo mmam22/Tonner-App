@@ -162,7 +162,7 @@
     <!-- Modals (same as before, unchanged) -->
     <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>📥 Receive Toner</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="recDate" required></div><div class="form-group"><label>Toner Code *</label><div style="display:flex;gap:6px;"><input type="text" id="recCode" placeholder="Scan or type code" required oninput="resolveBarcode('recCode','recLine','recColor','recMin')" style="flex:1;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('recCode')">📷</button></div></div></div><div class="form-row"><div class="form-group"><label>Paint Line *</label><select id="recLine" required></select></div><div class="form-group"><label>Color / Name</label><input type="text" id="recColor"></div></div><div class="form-row"><div class="form-group"><label>Quantity *</label><input type="number" id="recQty" value="1" min="1"></div><div class="form-group"><label>Supplier</label><input type="text" id="recSupplier"></div></div><div class="form-row"><div class="form-group"><label>Min Level</label><input type="number" id="recMin" value="3" min="0"></div><div class="form-group"><label>Notes</label><input type="text" id="recNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">Done</button><button type="submit" class="btn btn-green">✅ Confirm</button></div></form></div></div>
     <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>📤 Toner Outgoing</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="outDate" required></div><div class="form-group"><label>Toner Code *</label><div style="display:flex;gap:6px;"><input type="text" id="outCode" placeholder="Scan or type" required list="tonerSuggest" oninput="resolveOutBarcode()" style="flex:1;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('outCode')">📷</button></div></div></div><div class="form-row"><div class="form-group"><label>Paint Line (auto)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div><div class="form-group"><label>Quantity *</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>Customer</label><input type="text" id="outCustomer"></div><div class="form-group"><label>Notes</label><input type="text" id="outNotes"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.82rem;margin-bottom:10px;display:none;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">Done</button><button type="submit" class="btn btn-primary">✅ Confirm</button></div></form></div></div>
-    <div class="modal-overlay" id="editModal" style="display:none;"><div class="modal"><h3>✏️ Edit Toner</h3><form onsubmit="handleEdit(event)"><div class="form-group"><label>Toner Code</label><input type="text" id="editCode" readonly style="background:#0b1219;"></div><div class="form-row"><div class="form-group"><label>Color / Name</label><input type="text" id="editColor"></div><div class="form-group"><label>Paint Line</label><select id="editLine"></select></div></div><div class="form-row"><div class="form-group"><label>Min Level</label><input type="number" id="editMin" min="0"></div><div class="form-group"><label>Current Stock</label><input type="number" id="editStock" readonly style="background:#0b1219;"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;"><button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button><button type="submit" class="btn btn-green">💾 Save</button></div></form></div></div>
+    <div class="modal-overlay" id="editModal" style="display:none;"><div class="modal"><h3>✏️ Edit Toner</h3><form onsubmit="handleEdit(event)"><div class="form-group"><label>Toner Code</label><input type="text" id="editCode" readonly style="background:#0b1219;"></div><div class="form-row"><div class="form-group"><label>Color / Name</label><input type="text" id="editColor"></div><div class="form-group"><label>Paint Line</label><select id="editLine"></select></div></div><div class="form-row"><div class="form-group"><label>Min Level</label><input type="number" id="editMin" min="0"></div><div class="form-group"><label>Current Stock</label><input type="number" id="editStock"  style="background:#0b1219;"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;"><button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button><button type="submit" class="btn btn-green">💾 Save</button></div></form></div></div>
     <div class="modal-overlay" id="scannerModal" style="display:none;"><div class="modal" style="text-align:center;"><h3>📷 Scan Barcode</h3><div class="scanner-container"><video id="scannerVideo" autoplay playsinline></video><div class="scan-region-highlight"></div></div><p style="font-size:0.8rem;color:var(--text2);margin:8px 0;">Point camera at barcode</p><button class="btn btn-outline" onclick="stopScanner()">❌ Close</button><p id="scannerError" style="color:#e74c3c;font-size:0.8rem;display:none;"></p></div></div>
     <div class="modal-overlay" id="aliasModal" style="display:none;"><div class="modal"><h3>⚡ Barcode Aliases</h3><p style="font-size:0.85rem;margin-bottom:12px;">Map scanner barcodes to your internal toner codes.</p><div class="alias-list" id="aliasList"></div><button class="btn btn-sm btn-outline" id="addAliasBtn" style="margin-top:8px;">+ Add Alias</button><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeAliasModal()">Cancel</button><button class="btn btn-green" onclick="saveAliases()">Save</button></div></div></div>
     <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3>⚙️ Paint Lines</h3><p style="font-size:0.85rem;margin-bottom:12px;">Edit names (empty = delete, min 1 line).</p><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:10px;">+ Add Line</button><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button><button class="btn btn-green" onclick="saveLineSettings()">Save</button></div></div></div>
@@ -577,23 +577,28 @@
         };
         const closeEditModal = () => { document.getElementById('editModal').style.display='none'; };
         const handleEdit = async (e) => {
-            e.preventDefault();
-            const code = document.getElementById('editCode').value.trim().toUpperCase();
-            const color = document.getElementById('editColor').value.trim();
-            const minLevel = parseInt(document.getElementById('editMin').value) || 0;
-            const line = document.getElementById('editLine').value;
-            const tonerRef = db.collection('inventory').doc(code);
-            const doc = await tonerRef.get();
-            if (!doc.exists) return;
-            await tonerRef.update({
-                color: color || doc.data().color,
-                minLevel: minLevel >= 0 ? minLevel : doc.data().minLevel,
-                line: line || doc.data().line,
-                lastUpdated: todayISO()
-            });
-            closeEditModal();
-            showToast(`Toner ${code} updated!`, 'success');
-        };
+    e.preventDefault();
+    const code = document.getElementById('editCode').value.trim().toUpperCase();
+    const color = document.getElementById('editColor').value.trim();
+    const minLevel = parseInt(document.getElementById('editMin').value) || 0;
+    const line = document.getElementById('editLine').value;
+    const stock = parseInt(document.getElementById('editStock').value);
+    const tonerRef = db.collection('inventory').doc(code);
+    const doc = await tonerRef.get();
+    if (!doc.exists) return;
+    const updates = {
+        color: color || doc.data().color,
+        minLevel: minLevel >= 0 ? minLevel : doc.data().minLevel,
+        line: line || doc.data().line,
+        lastUpdated: todayISO()
+    };
+    if (!isNaN(stock) && stock >= 0) {
+        updates.stock = stock;
+    }
+    await tonerRef.update(updates);
+    closeEditModal();
+    showToast(`Toner ${code} updated!`, 'success');
+};
 
         // ──────────────────────────────────────
         // MODALS (open/close)
