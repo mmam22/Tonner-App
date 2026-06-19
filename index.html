@@ -111,7 +111,33 @@
         .fab-menu.open { opacity:1; transform:translateY(0); pointer-events:auto; }
         .fab-menu button { width:50px; height:50px; border-radius:50%; border:none; font-size:1.4rem; background:var(--surface); color:var(--text); box-shadow:0 4px 15px rgba(0,0,0,0.3); cursor:pointer; }
         .fab-menu button:hover { background:var(--accent); color:#000; }
-    </style>
+        /* Tooltips */
+[data-tooltip] {
+    position: relative;
+}
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: #000;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 999;
+}
+[data-tooltip]:hover::after,
+[data-tooltip]:active::after {
+    opacity: 1;
+}
+</style>
 </head>
 <body>
     <header class="header">
@@ -441,7 +467,10 @@
                 const isLow = t.stock < t.minLevel;
                 const tr = document.createElement('tr');
                 tr.className = 'swipe-row'; tr.setAttribute('data-code', t.code);
-                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>${isLow ? '<span class="badge badge-low">⚠ Low</span>' : '<span class="badge badge-in">OK</span>'}</td><td>${formatDate(t.lastUpdated)}</td><td><button class="btn btn-sm btn-outline" onclick="quickOutgoing('${escapeHTML(t.code)}')">📤</button> <button class="btn btn-sm btn-outline" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button> <button class="btn btn-sm btn-outline" onclick="editToner('${escapeHTML(t.code)}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteTonerFromCloud('${escapeHTML(t.code)}')">🗑</button></td>`;
+                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>${isLow ? '<span class="badge badge-low">⚠ Low</span>' : '<span class="badge badge-in">OK</span>'}</td><td>${formatDate(t.lastUpdated)}</td><td><button class="btn btn-sm btn-outline" data-tooltip="Ship Out" onclick="quickOutgoing('${escapeHTML(t.code)}')">📤</button>
+<button class="btn btn-sm btn-outline" data-tooltip="Print Label" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button>
+<button class="btn btn-sm btn-outline" data-tooltip="Edit Toner" onclick="editToner('${escapeHTML(t.code)}')">✏️</button>
+<button class="btn btn-sm btn-danger" data-tooltip="Delete Toner" onclick="deleteTonerFromCloud('${escapeHTML(t.code)}')">🗑</button>
                 tbody.appendChild(tr);
 
                 let startX = 0, startY = 0;
@@ -503,7 +532,8 @@
             low.forEach(t=>{
                 const deficit = t.minLevel - t.stock;
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td class="stock-warn">${t.stock}</td><td>${t.minLevel}</td><td style="color:#e74c3c;font-weight:700;">-${deficit}</td><td><button class="btn btn-sm btn-primary" onclick="quickReceive('${escapeHTML(t.code)}')">📥 Reorder</button> <button class="btn btn-sm btn-outline" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button></td>`;
+                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td class="stock-warn">${t.stock}</td><td>${t.minLevel}</td><td style="color:#e74c3c;font-weight:700;">-${deficit}</td><td><button class="btn btn-sm btn-primary" data-tooltip="Receive Stock" onclick="quickReceive('${escapeHTML(t.code)}')">📥 Reorder</button>
+<button class="btn btn-sm btn-outline" data-tooltip="Print Label" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button>
                 tbody.appendChild(tr);
             });
         };
