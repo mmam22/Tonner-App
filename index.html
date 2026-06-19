@@ -111,33 +111,34 @@
         .fab-menu.open { opacity:1; transform:translateY(0); pointer-events:auto; }
         .fab-menu button { width:50px; height:50px; border-radius:50%; border:none; font-size:1.4rem; background:var(--surface); color:var(--text); box-shadow:0 4px 15px rgba(0,0,0,0.3); cursor:pointer; }
         .fab-menu button:hover { background:var(--accent); color:#000; }
+        
         /* Tooltips */
-[data-tooltip] {
-    position: relative;
-}
-[data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 120%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--accent);
-    color: #000;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-    z-index: 999;
-}
-[data-tooltip]:hover::after,
-[data-tooltip]:active::after {
-    opacity: 1;
-}
-</style>
+        [data-tooltip] {
+            position: relative;
+        }
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #000;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 999;
+        }
+        [data-tooltip]:hover::after,
+        [data-tooltip]:active::after {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <header class="header">
@@ -185,10 +186,10 @@
     </div>
     <div class="fab-container"><div class="fab-menu" id="fabMenu"><button onclick="openReceiveModal();toggleFab()">📥</button><button onclick="openOutgoingModal();toggleFab()">📤</button><button onclick="startScanner('recCode');toggleFab()">📷</button></div><button class="fab" onclick="toggleFab()">+</button></div>
 
-    <!-- Modals (same as before, unchanged) -->
+    <!-- Modals -->
     <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>📥 Receive Toner</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="recDate" required></div><div class="form-group"><label>Toner Code *</label><div style="display:flex;gap:6px;"><input type="text" id="recCode" placeholder="Scan or type code" required oninput="resolveBarcode('recCode','recLine','recColor','recMin')" style="flex:1;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('recCode')">📷</button></div></div></div><div class="form-row"><div class="form-group"><label>Paint Line *</label><select id="recLine" required></select></div><div class="form-group"><label>Color / Name</label><input type="text" id="recColor"></div></div><div class="form-row"><div class="form-group"><label>Quantity *</label><input type="number" id="recQty" value="1" min="1"></div><div class="form-group"><label>Supplier</label><input type="text" id="recSupplier"></div></div><div class="form-row"><div class="form-group"><label>Min Level</label><input type="number" id="recMin" value="3" min="0"></div><div class="form-group"><label>Notes</label><input type="text" id="recNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">Done</button><button type="submit" class="btn btn-green">✅ Confirm</button></div></form></div></div>
     <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>📤 Toner Outgoing</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="outDate" required></div><div class="form-group"><label>Toner Code *</label><div style="display:flex;gap:6px;"><input type="text" id="outCode" placeholder="Scan or type" required list="tonerSuggest" oninput="resolveOutBarcode()" style="flex:1;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('outCode')">📷</button></div></div></div><div class="form-row"><div class="form-group"><label>Paint Line (auto)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div><div class="form-group"><label>Quantity *</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>Customer</label><input type="text" id="outCustomer"></div><div class="form-group"><label>Notes</label><input type="text" id="outNotes"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.82rem;margin-bottom:10px;display:none;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">Done</button><button type="submit" class="btn btn-primary">✅ Confirm</button></div></form></div></div>
-    <div class="modal-overlay" id="editModal" style="display:none;"><div class="modal"><h3>✏️ Edit Toner</h3><form onsubmit="handleEdit(event)"><div class="form-group"><label>Toner Code</label><input type="text" id="editCode" readonly style="background:#0b1219;"></div><div class="form-row"><div class="form-group"><label>Color / Name</label><input type="text" id="editColor"></div><div class="form-group"><label>Paint Line</label><select id="editLine"></select></div></div><div class="form-row"><div class="form-group"><label>Min Level</label><input type="number" id="editMin" min="0"></div><div class="form-group"><label>Current Stock</label><input type="number" id="editStock"  style="background:#0b1219;"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;"><button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button><button type="submit" class="btn btn-green">💾 Save</button></div></form></div></div>
+    <div class="modal-overlay" id="editModal" style="display:none;"><div class="modal"><h3>✏️ Edit Toner</h3><form onsubmit="handleEdit(event)"><div class="form-group"><label>Toner Code</label><input type="text" id="editCode" readonly style="background:#0b1219;"></div><div class="form-row"><div class="form-group"><label>Color / Name</label><input type="text" id="editColor"></div><div class="form-group"><label>Paint Line</label><select id="editLine"></select></div></div><div class="form-row"><div class="form-group"><label>Min Level</label><input type="number" id="editMin" min="0"></div><div class="form-group"><label>Current Stock</label><input type="number" id="editStock" style="background:#0b1219;"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;"><button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancel</button><button type="submit" class="btn btn-green">💾 Save</button></div></form></div></div>
     <div class="modal-overlay" id="scannerModal" style="display:none;"><div class="modal" style="text-align:center;"><h3>📷 Scan Barcode</h3><div class="scanner-container"><video id="scannerVideo" autoplay playsinline></video><div class="scan-region-highlight"></div></div><p style="font-size:0.8rem;color:var(--text2);margin:8px 0;">Point camera at barcode</p><button class="btn btn-outline" onclick="stopScanner()">❌ Close</button><p id="scannerError" style="color:#e74c3c;font-size:0.8rem;display:none;"></p></div></div>
     <div class="modal-overlay" id="aliasModal" style="display:none;"><div class="modal"><h3>⚡ Barcode Aliases</h3><p style="font-size:0.85rem;margin-bottom:12px;">Map scanner barcodes to your internal toner codes.</p><div class="alias-list" id="aliasList"></div><button class="btn btn-sm btn-outline" id="addAliasBtn" style="margin-top:8px;">+ Add Alias</button><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeAliasModal()">Cancel</button><button class="btn btn-green" onclick="saveAliases()">Save</button></div></div></div>
     <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3>⚙️ Paint Lines</h3><p style="font-size:0.85rem;margin-bottom:12px;">Edit names (empty = delete, min 1 line).</p><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:10px;">+ Add Line</button><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button><button class="btn btn-green" onclick="saveLineSettings()">Save</button></div></div></div>
@@ -197,47 +198,43 @@
 
     <script>
         // ══════════════════════════════════════
-        // FIREBASE CONFIG – INSERT YOUR OWN HERE
+        // FIREBASE CONFIG
         // ══════════════════════════════════════
         const firebaseConfig = {
-  apiKey: "AIzaSyDm8rSbuAaOwMHOM_qnud5jZmF1ctCjb_U",
-  authDomain: "toner-track-pro.firebaseapp.com",
-  projectId: "toner-track-pro",
-  storageBucket: "toner-track-pro.firebasestorage.app",
-  messagingSenderId: "249012464499",
-  appId: "1:249012464499:web:c5417c78ec07a44ee57306"
-};
-        // Initialize Firebase
+            apiKey: "AIzaSyDm8rSbuAaOwMHOM_qnud5jZmF1ctCjb_U",
+            authDomain: "toner-track-pro.firebaseapp.com",
+            projectId: "toner-track-pro",
+            storageBucket: "toner-track-pro.firebasestorage.app",
+            messagingSenderId: "249012464499",
+            appId: "1:249012464499:web:c5417c78ec07a44ee57306"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         // ──────────────────────────────────────
-        // GLOBAL STATE (synced from Firestore)
+        // GLOBAL STATE
         // ──────────────────────────────────────
-        let inventory = {};        // { code: { ... } }
-        let history = [];          // array of transaction objects
-       const DEFAULT_LINES = ['Line 1', 'Line 2', 'Line 3'];
-       let lines = [...DEFAULT_LINES];
-       let aliases = {};
-       let order = [];
+        const DEFAULT_LINES = ['Line 1', 'Line 2', 'Line 3'];
+        let inventory = {};
+        let history = [];
+        let lines = [...DEFAULT_LINES];
+        let aliases = {};
+        let order = [];
 
         // ──────────────────────────────────────
-        // FIREBASE LISTENERS (real-time sync)
+        // FIREBASE LISTENERS
         // ──────────────────────────────────────
-        // Listen to inventory
         db.collection('inventory').onSnapshot(snapshot => {
             const newInv = {};
             snapshot.forEach(doc => { newInv[doc.id] = doc.data(); });
             inventory = newInv;
             renderAll();
         });
-        // Listen to history
         db.collection('history').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
             history = [];
             snapshot.forEach(doc => { history.push({ id: doc.id, ...doc.data() }); });
             renderAll();
         });
-        // Listen to settings (lines, aliases, order)
         db.collection('settings').doc('config').onSnapshot(doc => {
             if (doc.exists) {
                 const data = doc.data();
@@ -245,7 +242,6 @@
                 if (data.aliases) aliases = data.aliases;
                 if (data.order) order = data.order;
             } else {
-                // Initialize settings doc if missing
                 db.collection('settings').doc('config').set({
                     lines: DEFAULT_LINES,
                     aliases: {},
@@ -256,9 +252,6 @@
             renderAll();
         });
 
-        // ──────────────────────────────────────
-        // RENDER ALL VIEWS
-        // ──────────────────────────────────────
         function renderAll() {
             renderInventory();
             renderHistory();
@@ -271,7 +264,7 @@
         }
 
         // ──────────────────────────────────────
-        // HELPER FUNCTIONS (as before, but using global state)
+        // HELPERS
         // ──────────────────────────────────────
         const genId = () => 'tx_' + Date.now() + Math.random().toString(36).slice(2,8);
         const todayISO = () => new Date().toISOString().slice(0,10);
@@ -292,17 +285,11 @@
             } catch(e) {}
         };
 
-        // ──────────────────────────────────────
-        // ALIAS RESOLVER
-        // ──────────────────────────────────────
         const resolveAlias = (barcode) => {
             const clean = barcode.trim();
             return aliases[clean] || clean;
         };
 
-        // ──────────────────────────────────────
-        // AUTO‑FILL / RESOLVE ON INPUT
-        // ──────────────────────────────────────
         const resolveBarcode = (fieldId, lineSelId, colorId, minId) => {
             const input = document.getElementById(fieldId);
             if (!input) return;
@@ -327,7 +314,7 @@
         };
 
         // ──────────────────────────────────────
-        // CORE OPERATIONS (now write to Firestore)
+        // CORE OPERATIONS
         // ──────────────────────────────────────
         async function receiveToner(code, color, qty, supplier, notes, minLevel, date, line) {
             const norm = code.trim().toUpperCase();
@@ -335,7 +322,6 @@
             const tonerRef = db.collection('inventory').doc(norm);
             const doc = await tonerRef.get();
             if (!doc.exists) {
-                // New toner: add to order
                 const newOrder = [...order, norm];
                 await db.collection('settings').doc('config').update({ order: newOrder });
                 await tonerRef.set({
@@ -352,7 +338,6 @@
                     line
                 });
             }
-            // Add history
             await db.collection('history').add({
                 date: date||todayISO(), type: 'in', tonerCode: norm, quantity: parseInt(qty),
                 customerOrSupplier: supplier.trim()||'N/A', notes: notes.trim()||'', line,
@@ -405,7 +390,7 @@
         }
 
         // ──────────────────────────────────────
-        // RENDER INVENTORY (chronological order)
+        // RENDER INVENTORY
         // ──────────────────────────────────────
         let currentLineFilter = '__ALL__';
         const renderLineTabs = () => {
@@ -467,10 +452,7 @@
                 const isLow = t.stock < t.minLevel;
                 const tr = document.createElement('tr');
                 tr.className = 'swipe-row'; tr.setAttribute('data-code', t.code);
-                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>${isLow ? '<span class="badge badge-low">⚠ Low</span>' : '<span class="badge badge-in">OK</span>'}</td><td>${formatDate(t.lastUpdated)}</td><td><button class="btn btn-sm btn-outline" data-tooltip="Ship Out" onclick="quickOutgoing('${escapeHTML(t.code)}')">📤</button>
-<button class="btn btn-sm btn-outline" data-tooltip="Print Label" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button>
-<button class="btn btn-sm btn-outline" data-tooltip="Edit Toner" onclick="editToner('${escapeHTML(t.code)}')">✏️</button>
-<button class="btn btn-sm btn-danger" data-tooltip="Delete Toner" onclick="deleteTonerFromCloud('${escapeHTML(t.code)}')">🗑</button>
+                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>${isLow ? '<span class="badge badge-low">⚠ Low</span>' : '<span class="badge badge-in">OK</span>'}</td><td>${formatDate(t.lastUpdated)}</td><td><button class="btn btn-sm btn-outline" data-tooltip="Ship Out" onclick="quickOutgoing('${escapeHTML(t.code)}')">📤</button> <button class="btn btn-sm btn-outline" data-tooltip="Print Label" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button> <button class="btn btn-sm btn-outline" data-tooltip="Edit Toner" onclick="editToner('${escapeHTML(t.code)}')">✏️</button> <button class="btn btn-sm btn-danger" data-tooltip="Delete Toner" onclick="deleteTonerFromCloud('${escapeHTML(t.code)}')">🗑</button></td>`;
                 tbody.appendChild(tr);
 
                 let startX = 0, startY = 0;
@@ -532,8 +514,7 @@
             low.forEach(t=>{
                 const deficit = t.minLevel - t.stock;
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td class="stock-warn">${t.stock}</td><td>${t.minLevel}</td><td style="color:#e74c3c;font-weight:700;">-${deficit}</td><td><button class="btn btn-sm btn-primary" data-tooltip="Receive Stock" onclick="quickReceive('${escapeHTML(t.code)}')">📥 Reorder</button>
-<button class="btn btn-sm btn-outline" data-tooltip="Print Label" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button>
+                tr.innerHTML = `<td>${escapeHTML(t.line||'?')}</td><td><strong>${escapeHTML(t.code)}</strong></td><td>${escapeHTML(t.color)}</td><td class="stock-warn">${t.stock}</td><td>${t.minLevel}</td><td style="color:#e74c3c;font-weight:700;">-${deficit}</td><td><button class="btn btn-sm btn-primary" data-tooltip="Receive Stock" onclick="quickReceive('${escapeHTML(t.code)}')">📥 Reorder</button> <button class="btn btn-sm btn-outline" data-tooltip="Print Label" onclick="printLabel('${escapeHTML(t.code)}')">🏷️</button></td>`;
                 tbody.appendChild(tr);
             });
         };
@@ -543,9 +524,6 @@
             Object.values(inventory).forEach(t=>{ const opt = document.createElement('option'); opt.value = t.code; opt.textContent = `${t.code} - ${t.color} (${t.line})`; datalist.appendChild(opt); });
         };
 
-        // ──────────────────────────────────────
-        // BAR CHART, CSV, REPORT, LABEL (unchanged, but use global state)
-        // ──────────────────────────────────────
         function drawBarChart() {
             const canvas = document.getElementById('barChart');
             if (!canvas) return;
@@ -594,7 +572,7 @@
         };
 
         // ──────────────────────────────────────
-        // EDIT TONER
+        // EDIT TONER (stock now editable)
         // ──────────────────────────────────────
         const editToner = (code) => {
             const toner = inventory[code]; if (!toner) return;
@@ -607,31 +585,31 @@
         };
         const closeEditModal = () => { document.getElementById('editModal').style.display='none'; };
         const handleEdit = async (e) => {
-    e.preventDefault();
-    const code = document.getElementById('editCode').value.trim().toUpperCase();
-    const color = document.getElementById('editColor').value.trim();
-    const minLevel = parseInt(document.getElementById('editMin').value) || 0;
-    const line = document.getElementById('editLine').value;
-    const stock = parseInt(document.getElementById('editStock').value);
-    const tonerRef = db.collection('inventory').doc(code);
-    const doc = await tonerRef.get();
-    if (!doc.exists) return;
-    const updates = {
-        color: color || doc.data().color,
-        minLevel: minLevel >= 0 ? minLevel : doc.data().minLevel,
-        line: line || doc.data().line,
-        lastUpdated: todayISO()
-    };
-    if (!isNaN(stock) && stock >= 0) {
-        updates.stock = stock;
-    }
-    await tonerRef.update(updates);
-    closeEditModal();
-    showToast(`Toner ${code} updated!`, 'success');
-};
+            e.preventDefault();
+            const code = document.getElementById('editCode').value.trim().toUpperCase();
+            const color = document.getElementById('editColor').value.trim();
+            const minLevel = parseInt(document.getElementById('editMin').value) || 0;
+            const line = document.getElementById('editLine').value;
+            const stock = parseInt(document.getElementById('editStock').value);
+            const tonerRef = db.collection('inventory').doc(code);
+            const doc = await tonerRef.get();
+            if (!doc.exists) return;
+            const updates = {
+                color: color || doc.data().color,
+                minLevel: minLevel >= 0 ? minLevel : doc.data().minLevel,
+                line: line || doc.data().line,
+                lastUpdated: todayISO()
+            };
+            if (!isNaN(stock) && stock >= 0) {
+                updates.stock = stock;
+            }
+            await tonerRef.update(updates);
+            closeEditModal();
+            showToast(`Toner ${code} updated!`, 'success');
+        };
 
         // ──────────────────────────────────────
-        // MODALS (open/close)
+        // MODALS
         // ──────────────────────────────────────
         const populateLineSelect = (selId, selected='') => {
             const sel = document.getElementById(selId);
@@ -717,7 +695,7 @@
         };
 
         // ──────────────────────────────────────
-        // CAMERA SCANNER (unchanged)
+        // CAMERA SCANNER
         // ──────────────────────────────────────
         let scannerStream = null, scannerTarget = null, scannerActive = false;
         window.startScanner = async (targetFieldId) => {
@@ -771,7 +749,7 @@
         };
 
         // ──────────────────────────────────────
-        // CONTINUOUS SCAN FLOW (now async)
+        // CONTINUOUS SCAN FLOW
         // ──────────────────────────────────────
         window.handleReceive = async (e) => {
             e.preventDefault();
@@ -822,20 +800,14 @@
                     const data = JSON.parse(e.target.result);
                     if (data.inventory && data.history) {
                         if (confirm('Restore backup? This will overwrite cloud data.')) {
-                            // Batch write to Firestore
                             const batch = db.batch();
-                            // Clear existing inventory
                             const invDocs = await db.collection('inventory').get();
                             invDocs.forEach(doc => batch.delete(doc.ref));
-                            // Add new inventory
                             Object.entries(data.inventory).forEach(([code, val]) => batch.set(db.collection('inventory').doc(code), val));
-                            // Clear history
                             const histDocs = await db.collection('history').get();
                             histDocs.forEach(doc => batch.delete(doc.ref));
-                            // Add new history
                             data.history.forEach(tx => batch.set(db.collection('history').doc(), tx));
                             await batch.commit();
-                            // Restore settings
                             await db.collection('settings').doc('config').set({
                                 lines: data.lines || DEFAULT_LINES,
                                 aliases: data.aliases || {},
@@ -872,7 +844,6 @@
         // ──────────────────────────────────────
         // INITIAL LOAD
         // ──────────────────────────────────────
-        // (data loads automatically via Firestore listeners)
         document.getElementById('recDate').value = todayISO();
         document.getElementById('outDate').value = todayISO();
     </script>
