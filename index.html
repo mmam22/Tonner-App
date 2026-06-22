@@ -244,7 +244,6 @@ window.toggleFastScan = () => {
 document.addEventListener('keydown', async (e) => {
     if (!fastScanMode) return;
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-    // Accumulate barcode characters (scanner sends them fast)
     if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
     clearTimeout(window._scanBuffer.timer);
     if (e.key === 'Enter') {
@@ -252,10 +251,11 @@ document.addEventListener('keydown', async (e) => {
         window._scanBuffer.chars = '';
         if (!barcode || barcode.length < 4) return;
         const resolved = resolveAlias(barcode);
-        const toner = inventory[resolved];
-        if (!toner) { showToast(barcode + ' NOT FOUND','error'); return; }
+        const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === resolved);
+        if (!tonerEntry) { showToast(barcode + ' NOT FOUND','error'); return; }
+        const [docId, toner] = tonerEntry;
         if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
-        await db.collection('inventory').doc(resolved).update({ stock: toner.stock - 1, lastUpdated: todayISO() });
+        await db.collection('inventory').doc(docId).update({ stock: toner.stock - 1, lastUpdated: todayISO() });
         await db.collection('history').add({ date: todayISO(), type: 'out', tonerCode: resolved, quantity: 1, customerOrSupplier: 'FAST SCAN', line: toner.line, costPerUnit: toner.cost || 0, timestamp: Date.now() });
         playAlertChime();
         showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
@@ -263,6 +263,7 @@ document.addEventListener('keydown', async (e) => {
         window._scanBuffer.chars += e.key;
         window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
     }
+});
 });
         window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
         window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
