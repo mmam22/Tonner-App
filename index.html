@@ -231,9 +231,17 @@
 
         const todayISO = () => new Date().toISOString().slice(0,10);
         const showToast = (msg,type='success')=>{ const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),2200); };
-
-        window.quickOutgoing = (code) => { const t=inventory[code]; document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=t?.barcode||code; document.getElementById('outTonerNumber').value=code; document.getElementById('outDate').value=todayISO(); document.getElementById('outLineDisplay').value=t?.line||''; };
-       // FAST SCAN OUTGOING - scans directly from dashboard
+        window.quickOutgoing = (code) => {
+    const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === code);
+    if (!tonerEntry) return;
+    const [docId, t] = tonerEntry;
+    document.getElementById('outgoingModal').style.display = 'flex';
+    document.getElementById('outCode').value = t?.barcode || code;
+    document.getElementById('outTonerNumber').value = t.code;
+    document.getElementById('outDate').value = todayISO();
+    document.getElementById('outLineDisplay').value = t?.line || '';
+};
+        
 let fastScanMode = false;
 window.toggleFastScan = () => {
     fastScanMode = !fastScanMode;
@@ -259,7 +267,7 @@ document.addEventListener('keydown', async (e) => {
         await db.collection('history').add({ date: todayISO(), type: 'out', tonerCode: resolved, quantity: 1, customerOrSupplier: 'FAST SCAN', line: toner.line, costPerUnit: toner.cost || 0, timestamp: Date.now() });
         playAlertChime();
         showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
-    } else if (e.key.length === 1) {
+        } else if (e.key.length === 1) {
         window._scanBuffer.chars += e.key;
         window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
     }
