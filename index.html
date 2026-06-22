@@ -56,9 +56,9 @@
         .panel { display:none; }
         .panel.active { display:block; }
         .table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); }
-        table { width:100%; border-collapse:collapse; font-size:0.85rem; min-width:950px; }
-        th,td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
-        th { background:var(--surface2); font-weight:700; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); position:sticky; top:0; }
+        table { width:100%; border-collapse:collapse; font-size:0.85rem; min-width:1000px; }
+        th,td { padding:10px 10px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+        th { background:var(--surface2); font-weight:700; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); position:sticky; top:0; }
         tr:hover td { background:rgba(255,255,255,0.02); }
         .drag-handle { cursor:grab; color:var(--text2); font-weight:700; user-select:none; }
         .drag-handle:active { cursor:grabbing; }
@@ -67,7 +67,7 @@
         .cell-editable input { width:100%; padding:4px 6px; border-radius:4px; border:1px solid var(--accent); background:var(--surface2); color:var(--text); font-size:0.85rem; font-family:var(--font); font-weight:700; }
         .badge-low { display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.7rem; font-weight:700; background:rgba(243,156,18,0.2); color:var(--orange); animation:pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
-        .quick-add-row td { padding:6px 12px; }
+        .quick-add-row td { padding:6px 8px; }
         .quick-add-row input { width:100%; padding:6px 8px; border-radius:4px; border:1px dashed var(--accent); background:transparent; color:var(--text); font-size:0.8rem; font-family:var(--font); }
         .quick-add-row input::placeholder { color:var(--text2); text-transform:uppercase; font-weight:600; }
         .form-group { margin-bottom:14px; }
@@ -135,7 +135,7 @@
                 <input type="text" id="searchInventory" placeholder="SEARCH..." oninput="renderInventory()" style="flex:1; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-weight:600; text-transform:uppercase;">
                 <button class="btn btn-sm btn-outline" onclick="document.getElementById('searchInventory').value='';renderInventory();">CLEAR</button>
             </div>
-            <div class="table-wrap"><table><thead><tr><th></th><th>LINE</th><th>SCAN CODE</th><th>TONER NUMBER</th><th>STOCK</th><th>MIN</th><th>AVG COST</th><th>STATUS</th><th>UPDATED</th><th>OUT</th></tr></thead><tbody id="inventoryBody"></tbody><tfoot id="quickAddRow"></tfoot></table><div class="empty-state" id="inventoryEmpty" style="display:none;">NO TONERS FOUND</div></div>
+            <div class="table-wrap"><table><thead><tr><th></th><th>LINE</th><th>SCAN CODE</th><th>TONER NUMBER</th><th>SUPPLIER</th><th>STOCK</th><th>MIN</th><th>AVG COST</th><th>STATUS</th><th>UPDATED</th><th>OUT</th></tr></thead><tbody id="inventoryBody"></tbody><tfoot id="quickAddRow"></tfoot></table><div class="empty-state" id="inventoryEmpty" style="display:none;">NO TONERS FOUND</div></div>
         </div>
         <div class="panel" id="panel-orders">
             <button class="btn btn-primary" onclick="openCreateOrderModal()">NEW ORDER</button>
@@ -257,6 +257,7 @@
                     <td><span class="cell-editable" data-field="line" data-code="${t.code}">${t.line||'?'}</span></td>
                     <td><span class="cell-editable" data-field="barcode" data-code="${t.code}">${t.barcode||t.code}</span></td>
                     <td style="font-weight:700;"><span class="cell-editable" data-field="code" data-code="${t.code}">${t.code}</span></td>
+                    <td><span class="cell-editable" data-field="supplier" data-code="${t.code}">${t.supplier||''}</span></td>
                     <td style="font-weight:700;"><span class="cell-editable" data-field="stock" data-code="${t.code}">${t.stock}</span></td>
                     <td><span class="cell-editable" data-field="min" data-code="${t.code}">${t.minLevel}</span></td>
                     <td><span class="cell-editable" data-field="cost" data-code="${t.code}">$${(t.cost||0).toFixed(2)}</span></td>
@@ -264,15 +265,14 @@
                     <td>${t.lastUpdated||''}</td>
                     <td><button class="btn btn-sm btn-outline" onclick="quickOutgoing('${t.code}')">OUT</button></td>`;
                 tbody.appendChild(tr);
-                tr.querySelectorAll('.cell-editable').forEach(span => {
-                    span.addEventListener('click', function() { startInlineEdit(this); });
-                });
+                tr.querySelectorAll('.cell-editable').forEach(span => { span.addEventListener('click', function() { startInlineEdit(this); }); });
             });
             document.getElementById('quickAddRow').innerHTML = `<tr class="quick-add-row">
                 <td></td>
                 <td><select id="qaLine" style="width:100%;padding:6px;border-radius:4px;border:1px dashed var(--accent);background:transparent;color:var(--text);font-size:0.8rem;">${lines.map(l=>`<option value="${l}">${l}</option>`).join('')}</select></td>
                 <td><input type="text" id="qaBarcode" placeholder="SCAN CODE"></td>
                 <td><input type="text" id="qaCode" placeholder="TONER NUMBER"></td>
+                <td><input type="text" id="qaSupplier" placeholder="SUPPLIER"></td>
                 <td><input type="number" id="qaStock" placeholder="QTY" min="0" value="0"></td>
                 <td><input type="number" id="qaMin" placeholder="MIN" min="0" value="3"></td>
                 <td><input type="number" id="qaCost" placeholder="COST" step="0.01" min="0"></td>
@@ -308,6 +308,7 @@
             else if (field === 'min') updates.minLevel = parseInt(val) || 0;
             else if (field === 'cost') updates.cost = parseFloat(val) || 0;
             else if (field === 'barcode') updates.barcode = val.toUpperCase();
+            else if (field === 'supplier') updates.supplier = val.toUpperCase();
             else if (field === 'code') { if (val && val !== code) { await ref.delete(); await db.collection('inventory').doc(val.toUpperCase()).set({...doc.data(), code: val.toUpperCase()}); } }
             else if (field === 'color') updates.color = val;
             else if (field === 'line') updates.line = val;
@@ -321,11 +322,13 @@
             const line = document.getElementById('qaLine').value, color = document.getElementById('qaColor')?.value?.trim()||'';
             const stock = parseInt(document.getElementById('qaStock').value)||0, min = parseInt(document.getElementById('qaMin').value)||3;
             const cost = parseFloat(document.getElementById('qaCost').value)||0, barcode = (document.getElementById('qaBarcode')?.value?.trim()||'').toUpperCase();
+            const supplier = (document.getElementById('qaSupplier')?.value?.trim()||'').toUpperCase();
             const ref = db.collection('inventory').doc(code); const doc = await ref.get();
-            if(!doc.exists){ await ref.set({code,color:color||'N/A',stock,minLevel:min,lastUpdated:todayISO(),line,supplier:'',cost,totalSpent:cost*stock,barcode:barcode||code}); }
-            else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO(),barcode:barcode||ex.barcode||ex.code}); }
+            if(!doc.exists){ await ref.set({code,color:color||'N/A',stock,minLevel:min,lastUpdated:todayISO(),line,supplier,cost,totalSpent:cost*stock,barcode:barcode||code}); }
+            else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO(),barcode:barcode||ex.barcode||ex.code}); }
             document.getElementById('qaCode').value=''; document.getElementById('qaStock').value='0'; document.getElementById('qaCost').value='';
             if(document.getElementById('qaBarcode')) document.getElementById('qaBarcode').value='';
+            if(document.getElementById('qaSupplier')) document.getElementById('qaSupplier').value='';
             showToast(`${code} ADDED`,'success');
         };
 
@@ -454,21 +457,12 @@
                 const oldCode = data.code || '';
                 const oldColor = data.color || '';
                 if (oldColor && oldColor !== oldCode && oldColor !== 'N/A') {
-                    const newData = {
-                        code: oldColor.toUpperCase(),
-                        color: oldColor,
-                        barcode: oldCode
-                    };
-                    batch.set(doc.ref, newData, { merge: true });
-                    count++;
+                    const newData = { code: oldColor.toUpperCase(), color: oldColor, barcode: oldCode };
+                    batch.set(doc.ref, newData, { merge: true }); count++;
                 }
             });
-            if (count > 0) {
-                await batch.commit();
-                showToast(`${count} TONERS FIXED. TONER NUMBERS NOW IN CODE FIELD.`,'success');
-            } else {
-                showToast('NO TONERS NEEDED FIXING.','error');
-            }
+            if (count > 0) { await batch.commit(); showToast(`${count} TONERS FIXED. TONER NUMBERS NOW IN CODE FIELD.`,'success'); }
+            else { showToast('NO TONERS NEEDED FIXING.','error'); }
         };
 
         function populateLineSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; lines.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; if(l===sel)o.selected=true; s.appendChild(o); }); }
@@ -480,7 +474,7 @@
 
         function generateReportHTML() { const toners = Object.values(inventory).sort((a,b)=>(a.line||'').localeCompare(b.line||'')||a.code.localeCompare(b.code)); const low = toners.filter(t=>t.stock<t.minLevel); const pending = ordersList.filter(o=>o.status==='pending'||o.status==='partial'); let html = `<html><body style="font-family:Inter,Arial,sans-serif;max-width:800px;margin:auto;"><h2 style="color:#f68523;text-transform:uppercase;">TONERTRACK BI-WEEKLY REPORT</h2><p>DATE: ${new Date().toLocaleDateString()}</p>`; html += `<h3 style="text-transform:uppercase;">ALL TONERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr style="background:#f5f5f5;"><th>LINE</th><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>COST</th><th>STATUS</th></tr>`; toners.forEach(t=>{ html += `<tr><td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.stock<t.minLevel?'LOW':'OK'}</td></tr>`; }); html += `</table>`; if(low.length>0){ html += `<h3 style="color:#e74c3c;text-transform:uppercase;">LOW STOCK</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>LINE</th><th>TONER NUMBER</th><th>STOCK</th><th>MIN</th><th>DEFICIT</th></tr>`; low.forEach(t=>html+=`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${t.minLevel-t.stock}</td></tr>`); html+=`</table>`; } if(pending.length>0){ html += `<h3 style="text-transform:uppercase;">PENDING ORDERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>SUPPLIER</th><th>EXPECTED</th><th>ITEMS</th><th>STATUS</th></tr>`; pending.forEach(o=>html+=`<tr><td>${o.supplier}</td><td>${o.expectedDelivery}</td><td>${o.items.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')}</td><td>${o.status.toUpperCase()}</td></tr>`); html+=`</table>`; } html += `<h3 style="text-transform:uppercase;">SUPPLIER PURCHASE REPORTS</h3>`; const bySupplier = {}; low.forEach(t=>{ const s=t.supplier||'UNKNOWN'; if(!bySupplier[s]) bySupplier[s]=[]; bySupplier[s].push(t); }); Object.entries(bySupplier).forEach(([supplier,toners])=>{ html+=`<h4>${supplier}</h4><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>SUGGESTED REORDER</th></tr>`; toners.forEach(t=>html+=`<tr><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${Math.max(t.minLevel*2-t.stock,1)}</td></tr>`); html+=`</table>`; }); html += `</body></html>`; return html; }
 
-        window.exportCSV = () => { const inv=Object.values(inventory); const h=['LINE','SCAN CODE','TONER NUMBER','COLOR','STOCK','MIN','COST']; const r=inv.map(t=>[t.line||'',t.barcode||t.code,t.code,t.color,t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`INVENTORY_${todayISO()}.csv`; a.click(); };
+        window.exportCSV = () => { const inv=Object.values(inventory); const h=['LINE','SCAN CODE','TONER NUMBER','SUPPLIER','COLOR','STOCK','MIN','COST']; const r=inv.map(t=>[t.line||'',t.barcode||t.code,t.code,t.supplier||'',t.color,t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`INVENTORY_${todayISO()}.csv`; a.click(); };
         window.printReport = () => { const html = generateReportHTML(); const w=window.open('','_blank'); w.document.write(html); w.document.close(); };
         window.exportData = () => { const data={inventory,history,lines,suppliers,aliases,rowOrder,ordersList,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`BACKUP_${todayISO()}.json`; a.click(); };
         window.importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(data.inventory){ const batch=db.batch(); const ids=await db.collection('inventory').get(); ids.forEach(d=>batch.delete(d.ref)); Object.entries(data.inventory).forEach(([k,v])=>batch.set(db.collection('inventory').doc(k),v)); await batch.commit(); if(data.lines&&data.suppliers) await db.collection('settings').doc('config').set({lines:data.lines,suppliers:data.suppliers,aliases:data.aliases||{},rowOrder:data.rowOrder||[]}); showToast('DATA RESTORED','success'); } } catch{ showToast('ERROR READING FILE','error'); } }; r.readAsText(f); e.target.value=''; };
