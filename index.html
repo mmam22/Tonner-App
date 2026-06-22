@@ -271,25 +271,26 @@
 
         window.handleReceive = async (e) => { e.preventDefault(); const line=document.getElementById('recLine').value, code=document.getElementById('recTonerNumber').value.trim().toUpperCase() || document.getElementById('recCode').value.trim().toUpperCase(); if(!line||!code){ showToast('TONER NUMBER AND LINE REQUIRED','error'); return; } const qty=parseInt(document.getElementById('recQty').value)||0, cost=parseFloat(document.getElementById('recCost').value)||0; const supplier=document.getElementById('recSupplier').value.trim(), min=parseInt(document.getElementById('recMin').value)||3; const date=document.getElementById('recDate').value, color=document.getElementById('recColor').value.trim(), barcode=document.getElementById('recCode').value.trim().toUpperCase(); const ref=db.collection('inventory').doc(code); const doc=await ref.get(); if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:min,lastUpdated:date,line,supplier,cost,totalSpent:cost*qty,barcode:barcode||code}); } else { const ex=doc.data(); const ns=(ex.stock||0)+qty, nts=(ex.totalSpent||0)+(cost*qty); await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?nts/ns:0,totalSpent:nts,lastUpdated:date,barcode:barcode||ex.barcode||ex.code}); } await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:cost,timestamp:Date.now()}); showToast(`${code} RECEIVED`,'success'); document.getElementById('recCode').value=''; document.getElementById('recTonerNumber').value=''; document.getElementById('recQty').value='1'; document.getElementById('recCost').value=''; document.getElementById('recCode').focus(); };
 
-        window.handleOutgoing = async (e) => {
-            e.preventDefault();
-            const code = document.getElementById('outTonerNumber').value.trim().toUpperCase();
-            if (!code) { showToast('TONER NUMBER MISSING','error'); return; }
-            const qty = parseInt(document.getElementById('outQty').value) || 0;
-            const ref = db.collection('inventory').doc(code);
-            const doc = await ref.get();
-            if (!doc.exists) { showToast('TONER NOT FOUND','error'); return; }
-            const t = doc.data();
-            if (t.stock < qty) { showToast(`ONLY ${t.stock} AVAILABLE`,'error'); return; }
-            await ref.update({ stock: t.stock - qty, lastUpdated: document.getElementById('outDate').value });
-            await db.collection('history').add({ date: document.getElementById('outDate').value, type: 'out', tonerCode: code, quantity: qty, customerOrSupplier: document.getElementById('outCustomer').value.trim() || 'WALK-IN', line: t.line, costPerUnit: t.cost || 0, timestamp: Date.now() });
-            showNotification('OUTGOING', `${qty} ${code} SHIPPED. ${t.stock - qty} LEFT.`, 'out');
-            showToast(`${code} SHIPPED`, 'success');
-            document.getElementById('outCode').value = '';
-            document.getElementById('outTonerNumber').value = '';
-            document.getElementById('outQty').value = '1';
-            document.getElementById('outCode').focus();
-        };
+       window.handleOutgoing = async (e) => {
+    e.preventDefault();
+    const code = document.getElementById('outTonerNumber').value.trim().toUpperCase();
+    if (!code) { showToast('TONER NUMBER MISSING','error'); return; }
+    const qty = parseInt(document.getElementById('outQty').value) || 0;
+    // Search by the 'code' field, not document ID
+    const snapshot = await db.collection('inventory').where('code', '==', code).get();
+    if (snapshot.empty) { showToast('TONER NOT FOUND','error'); return; }
+    const doc = snapshot.docs[0];
+    const t = doc.data();
+    if (t.stock < qty) { showToast(`ONLY ${t.stock} AVAILABLE`,'error'); return; }
+    await doc.ref.update({ stock: t.stock - qty, lastUpdated: document.getElementById('outDate').value });
+    await db.collection('history').add({ date: document.getElementById('outDate').value, type: 'out', tonerCode: code, quantity: qty, customerOrSupplier: document.getElementById('outCustomer').value.trim() || 'WALK-IN', line: t.line, costPerUnit: t.cost || 0, timestamp: Date.now() });
+    showNotification('OUTGOING', `${qty} ${code} SHIPPED. ${t.stock - qty} LEFT.`, 'out');
+    showToast(`${code} SHIPPED`, 'success');
+    document.getElementById('outCode').value = '';
+    document.getElementById('outTonerNumber').value = '';
+    document.getElementById('outQty').value = '1';
+    document.getElementById('outCode').focus();
+};
 
         window.createOrder = async (e) => { e.preventDefault(); const supplier=document.getElementById('orderSupplier').value, delivery=document.getElementById('orderDelivery').value, notes=document.getElementById('orderNotes').value; if(!supplier||!delivery){ showToast('SUPPLIER AND DATE REQUIRED','error'); return; } const items=[], divs=document.querySelectorAll('#orderItems > div'); divs.forEach(d=>{ const ins=d.querySelectorAll('input'); const code=ins[0].value.trim().toUpperCase(), qty=parseInt(ins[1].value)||0; if(code&&qty>0) items.push({tonerCode:code,quantityOrdered:qty,quantityReceived:0,color:inventory[code]?.color||'N/A',line:inventory[code]?.line||lines[0]}); }); if(items.length===0){ showToast('ADD AT LEAST ONE ITEM','error'); return; } const supplierData = suppliers.find(s=>(s.name||'').toUpperCase()===supplier.toUpperCase()); let estCost = 0; items.forEach(i=>{ const t=inventory[i.tonerCode]; if(t?.cost) estCost += t.cost * i.quantityOrdered; }); await db.collection('orders').add({supplier,supplierEmail:supplierData?.email||'',orderDate:todayISO(),expectedDelivery:delivery,status:'pending',items,notes,estimatedCost:estCost,createdAt:Date.now()}); closeCreateOrderModal(); showToast(`ORDER CREATED. EST COST: $${estCost.toFixed(2)}`,'success'); };
 
