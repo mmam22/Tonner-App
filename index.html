@@ -106,6 +106,7 @@
     <header class="header">
         <div class="logo">TONER<span>TRACK</span> PRO</div>
         <div class="header-actions" id="headerActions">
+            <button class="btn btn-sm btn-outline" id="btnFastScan" onclick="toggleFastScan()">FAST SCAN</button>
             <button class="btn btn-primary" id="btnReceive" onclick="openReceiveModal()">RECEIVE</button>
             <button class="btn btn-outline" id="btnOutgoing" onclick="openOutgoingModal()">OUTGOING</button>
             <button class="btn btn-sm btn-outline" onclick="openAliasModal()">ALIASES</button>
@@ -232,6 +233,37 @@
         const showToast = (msg,type='success')=>{ const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),2200); };
 
         window.quickOutgoing = (code) => { const t=inventory[code]; document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=t?.barcode||code; document.getElementById('outTonerNumber').value=code; document.getElementById('outDate').value=todayISO(); document.getElementById('outLineDisplay').value=t?.line||''; };
+       // FAST SCAN OUTGOING - scans directly from dashboard
+let fastScanMode = false;
+window.toggleFastScan = () => {
+    fastScanMode = !fastScanMode;
+    document.getElementById('btnFastScan').style.background = fastScanMode ? 'var(--green)' : '';
+    document.getElementById('btnFastScan').textContent = fastScanMode ? 'SCAN MODE ON' : 'FAST SCAN';
+    showToast(fastScanMode ? 'FAST SCAN MODE ON - SCAN BARCODES TO SHIP' : 'FAST SCAN MODE OFF', 'success');
+};
+document.addEventListener('keydown', async (e) => {
+    if (!fastScanMode) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    // Accumulate barcode characters (scanner sends them fast)
+    if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
+    clearTimeout(window._scanBuffer.timer);
+    if (e.key === 'Enter') {
+        const barcode = window._scanBuffer.chars.trim().toUpperCase();
+        window._scanBuffer.chars = '';
+        if (!barcode || barcode.length < 4) return;
+        const resolved = resolveAlias(barcode);
+        const toner = inventory[resolved];
+        if (!toner) { showToast(barcode + ' NOT FOUND','error'); return; }
+        if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
+        await db.collection('inventory').doc(resolved).update({ stock: toner.stock - 1, lastUpdated: todayISO() });
+        await db.collection('history').add({ date: todayISO(), type: 'out', tonerCode: resolved, quantity: 1, customerOrSupplier: 'FAST SCAN', line: toner.line, costPerUnit: toner.cost || 0, timestamp: Date.now() });
+        playAlertChime();
+        showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
+    } else if (e.key.length === 1) {
+        window._scanBuffer.chars += e.key;
+        window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
+    }
+});
         window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
         window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
         window.openOutgoingModal = () => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outDate').value=todayISO(); };
