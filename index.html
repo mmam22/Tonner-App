@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>TonerTrack Pro</title>
-    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22TonerTrack%20Pro%22%2C%22short_name%22%3A%22Toners%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b1219%22%2C%22theme_color%22%3A%22%23f68523%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'45'%20fill%3D'%2523f68523'%2F%3E%3Ctext%20x%3D'50'%20y%3D'70'%20font-size%3D'60'%20text-anchor%3D'middle'%20fill%3D'white'%3E%F0%9F%92%A7%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22100x100%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
+    <title>TONERTRACK PRO</title>
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22TONERTRACK%20PRO%22%2C%22short_name%22%3A%22Toners%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b1219%22%2C%22theme_color%22%3A%22%23f68523%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'45'%20fill%3D'%2523f68523'%2F%3E%3Ctext%20x%3D'50'%20y%3D'70'%20font-size%3D'60'%20text-anchor%3D'middle'%20fill%3D'white'%3ETT%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22100x100%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
     <meta name="theme-color" content="#f68523">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -15,145 +14,153 @@
         :root {
             --bg: #0b1219; --surface: #121e29; --surface2: #1a2835; --border: #253341;
             --text: #e4e8ec; --text2: #9ba5b0; --accent: #f68523; --accent2: #e0741a;
-            --green: #2ecc71; --green2: #27ae60; --blue: #2d9cdb; --orange: #f39c12;
-            --radius: 14px; --shadow: 0 12px 40px rgba(0,0,0,0.5);
+            --green: #2ecc71; --blue: #2d9cdb; --orange: #f39c12;
+            --radius: 12px; --shadow: 0 8px 32px rgba(0,0,0,0.5);
             --font: 'Inter', system-ui, -apple-system, sans-serif;
-            --transition: 0.25s ease;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height:100vh; overflow-x:hidden; -webkit-tap-highlight-color: transparent; }
-        .header { background: rgba(18,30,41,0.8); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--border); padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; position:sticky; top:0; z-index:100; flex-wrap:wrap; }
-        .logo { display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.5rem; letter-spacing:-0.6px; color:#fff; }
-        .logo svg { width:32px; height:32px; fill:var(--accent); }
-        .header-actions { display:flex; gap:8px; flex-wrap:wrap; }
-        .btn { padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-weight:600; font-size:0.9rem; font-family:var(--font); transition:all var(--transition); white-space:nowrap; display:inline-flex; align-items:center; gap:8px; background:transparent; color:var(--text); border:1px solid var(--border); backdrop-filter:blur(8px); }
-        .btn-primary { background:var(--accent); color:#000; border-color:var(--accent); font-weight:700; }
-        .btn-primary:hover,.btn-primary:active { background:var(--accent2); transform:translateY(-1px); box-shadow:0 8px 25px rgba(246,133,35,0.35); }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height:100vh; -webkit-tap-highlight-color: transparent; }
+        .header { background: rgba(18,30,41,0.9); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; position:sticky; top:0; z-index:100; flex-wrap:wrap; }
+        .logo { font-weight:800; font-size:1.4rem; letter-spacing:1px; color:#fff; }
+        .logo span { color:var(--accent); }
+        .header-actions { display:flex; gap:6px; flex-wrap:wrap; }
+        .btn { padding:9px 16px; border-radius:8px; border:1px solid var(--border); cursor:pointer; font-weight:700; font-size:0.8rem; font-family:var(--font); transition:all 0.2s; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; background:transparent; color:var(--text); text-transform:uppercase; letter-spacing:0.5px; }
+        .btn-primary { background:var(--accent); color:#000; border-color:var(--accent); }
+        .btn-primary:hover,.btn-primary:active { background:var(--accent2); }
         .btn-outline { border-color:var(--border); color:var(--text); }
-        .btn-outline:hover,.btn-outline:active { background:var(--surface2); border-color:#4a5568; }
-        .btn-sm { padding:7px 14px; font-size:0.8rem; border-radius:8px; }
-        .btn-danger { background:#c0392b; color:#fff; border-color:#c0392b; }
-        .btn-danger:hover { background:#a93226; }
-        .btn-green { background:var(--green); color:#000; border-color:var(--green); font-weight:700; }
-        .btn-green:hover { background:var(--green2); }
-        .container { max-width:1300px; margin:0 auto; padding:24px 24px 120px; position:relative; z-index:1; }
-        .stat-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(155px,1fr)); gap:16px; margin-bottom:24px; }
-        .stat-card { background: rgba(18,30,41,0.7); backdrop-filter:blur(12px); border-radius:var(--radius); padding:22px; border:1px solid var(--border); box-shadow:var(--shadow); cursor:pointer; transition:all var(--transition); }
-        .stat-card:active { transform:scale(0.97); background:var(--surface2); }
-        .stat-card .label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); margin-bottom:8px; }
-        .stat-card .value { font-size:2rem; font-weight:700; }
-        .chart-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
-        .chart-container { flex:1; min-width:300px; background:var(--surface); border-radius:var(--radius); padding:20px; border:1px solid var(--border); box-shadow:var(--shadow); backdrop-filter:blur(8px); }
-        .chart-container h4 { font-size:0.9rem; text-transform:uppercase; letter-spacing:0.6px; color:var(--text2); margin-bottom:16px; font-weight:700; }
-        canvas { display:block; width:100%; height:auto; max-height:200px; }
-        .paint-line-mini-cards { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
-        .mini-card { background:var(--surface); border-radius:var(--radius); padding:14px 18px; border:1px solid var(--border); box-shadow:var(--shadow); cursor:pointer; transition:all var(--transition); min-width:120px; }
-        .mini-card:hover { background:var(--surface2); border-color:var(--accent); }
-        .mini-card .line-name { font-weight:700; font-size:0.9rem; color:var(--accent); margin-bottom:6px; }
-        .mini-card .line-stats { font-size:0.8rem; color:var(--text2); }
-        .tabs { display:flex; gap:4px; margin-bottom:16px; background:var(--surface); border-radius:var(--radius); padding:4px; border:1px solid var(--border); overflow-x:auto; }
-        .tab { flex:1; min-width:70px; text-align:center; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all var(--transition); white-space:nowrap; color:var(--text2); background:transparent; border:none; }
-        .tab.active { background:var(--accent); color:#000; box-shadow:0 4px 12px rgba(246,133,35,0.3); }
-        .line-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
-        .line-tab { background:var(--surface2); border:1px solid var(--border); padding:10px 18px; border-radius:30px; font-weight:600; font-size:0.82rem; cursor:pointer; transition:all var(--transition); color:var(--text2); user-select:none; }
-        .line-tab.active { background:var(--accent); color:#000; border-color:var(--accent); box-shadow:0 4px 12px rgba(246,133,35,0.25); }
+        .btn-outline:hover,.btn-outline:active { background:var(--surface2); }
+        .btn-sm { padding:6px 10px; font-size:0.7rem; border-radius:6px; }
+        .btn-green { background:var(--green); color:#000; border-color:var(--green); }
+        .container { max-width:1300px; margin:0 auto; padding:20px 20px 100px; }
+        .stat-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+        .stat-card { background:var(--surface); border-radius:var(--radius); padding:18px; border:1px solid var(--border); box-shadow:var(--shadow); cursor:pointer; transition:all 0.2s; }
+        .stat-card:active { transform:scale(0.97); }
+        .stat-card .label { font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text2); margin-bottom:6px; font-weight:700; }
+        .stat-card .value { font-size:1.8rem; font-weight:800; }
+        .chart-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+        .chart-container { flex:1; min-width:280px; background:var(--surface); border-radius:var(--radius); padding:16px; border:1px solid var(--border); }
+        .chart-container h4 { font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--text2); margin-bottom:12px; font-weight:700; }
+        canvas { display:block; width:100%; height:auto; max-height:180px; }
+        .paint-line-mini-cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+        .mini-card { background:var(--surface); border-radius:var(--radius); padding:12px 16px; border:1px solid var(--border); cursor:pointer; transition:all 0.2s; min-width:110px; }
+        .mini-card:hover { border-color:var(--accent); }
+        .mini-card .line-name { font-weight:700; font-size:0.8rem; color:var(--accent); margin-bottom:4px; text-transform:uppercase; }
+        .mini-card .line-stats { font-size:0.75rem; color:var(--text2); }
+        .tabs { display:flex; gap:4px; margin-bottom:14px; background:var(--surface); border-radius:var(--radius); padding:4px; border:1px solid var(--border); overflow-x:auto; }
+        .tab { flex:1; min-width:70px; text-align:center; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:700; font-size:0.8rem; transition:all 0.2s; white-space:nowrap; color:var(--text2); background:transparent; border:none; text-transform:uppercase; letter-spacing:0.5px; }
+        .tab.active { background:var(--accent); color:#000; }
+        .line-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+        .line-tab { background:var(--surface2); border:1px solid var(--border); padding:8px 14px; border-radius:24px; font-weight:700; font-size:0.75rem; cursor:pointer; transition:all 0.2s; color:var(--text2); user-select:none; text-transform:uppercase; }
+        .line-tab.active { background:var(--accent); color:#000; border-color:var(--accent); }
+        .sortable-ghost { opacity:0.4; background:var(--accent); }
         .panel { display:none; }
         .panel.active { display:block; }
-        .table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow); backdrop-filter:blur(8px); }
-        table { width:100%; border-collapse:collapse; font-size:0.9rem; min-width:850px; }
-        th,td { padding:14px 16px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
-        th { background:var(--surface2); font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.6px; color:var(--text2); position:sticky; top:0; }
+        .table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); }
+        table { width:100%; border-collapse:collapse; font-size:0.85rem; min-width:950px; }
+        th,td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+        th { background:var(--surface2); font-weight:700; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); position:sticky; top:0; }
         tr:hover td { background:rgba(255,255,255,0.02); }
-        .badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.73rem; font-weight:700; }
-        .badge-in { background:rgba(46,204,113,0.2); color:var(--green); }
-        .badge-out { background:rgba(231,76,60,0.2); color:#e74c3c; }
-        .badge-low { background:rgba(243,156,18,0.2); color:var(--orange); animation:pulse 1.5s infinite; }
+        .drag-handle { cursor:grab; color:var(--text2); font-weight:700; user-select:none; }
+        .drag-handle:active { cursor:grabbing; }
+        .cell-editable { cursor:pointer; transition:background 0.2s; padding:4px 6px; border-radius:4px; }
+        .cell-editable:hover { background:rgba(246,133,35,0.1); }
+        .cell-editable input { width:100%; padding:4px 6px; border-radius:4px; border:1px solid var(--accent); background:var(--surface2); color:var(--text); font-size:0.85rem; font-family:var(--font); font-weight:700; }
+        .badge-low { display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.7rem; font-weight:700; background:rgba(243,156,18,0.2); color:var(--orange); animation:pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
-        .editable-stock, .editable-min { cursor:pointer; transition:background 0.2s; }
-        .editable-stock:hover, .editable-min:hover { background: rgba(246,133,35,0.1); border-radius:4px; padding:2px 4px; }
-        .form-group { margin-bottom:16px; }
-        .form-group label { display:block; font-weight:600; font-size:0.82rem; margin-bottom:6px; color:var(--text2); }
-        .form-group input,.form-group select { width:100%; padding:12px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:0.95rem; font-family:var(--font); -webkit-appearance:none; }
-        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .quick-add-row td { padding:6px 12px; }
+        .quick-add-row input { width:100%; padding:6px 8px; border-radius:4px; border:1px dashed var(--accent); background:transparent; color:var(--text); font-size:0.8rem; font-family:var(--font); }
+        .quick-add-row input::placeholder { color:var(--text2); text-transform:uppercase; font-weight:600; }
+        .form-group { margin-bottom:14px; }
+        .form-group label { display:block; font-weight:700; font-size:0.75rem; margin-bottom:5px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; }
+        .form-group input,.form-group select { width:100%; padding:10px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:0.9rem; font-family:var(--font); }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         @media (max-width:480px) { .form-row { grid-template-columns:1fr; } }
-        .empty-state { text-align:center; padding:50px; color:var(--text2); }
-        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(8px); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
-        .modal { background:var(--surface); border-radius:var(--radius); padding:28px; max-width:600px; width:100%; border:1px solid var(--border); box-shadow:0 25px 70px rgba(0,0,0,0.7); max-height:85vh; overflow-y:auto; }
-        .toast-container { position:fixed; top:20px; right:20px; z-index:999; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
-        .toast { background:var(--surface2); border:1px solid var(--border); padding:14px 20px; border-radius:8px; font-weight:600; font-size:0.85rem; box-shadow:0 10px 30px rgba(0,0,0,0.5); animation:slideIn 0.3s ease, fadeOut 0.4s ease 2.4s forwards; max-width:350px; backdrop-filter:blur(8px); }
+        .empty-state { text-align:center; padding:40px; color:var(--text2); font-weight:700; text-transform:uppercase; }
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .modal { background:var(--surface); border-radius:var(--radius); padding:24px; max-width:550px; width:100%; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.7); max-height:85vh; overflow-y:auto; }
+        .toast-container { position:fixed; top:16px; right:16px; z-index:999; display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+        .toast { background:var(--surface2); border:1px solid var(--border); padding:12px 18px; border-radius:8px; font-weight:700; font-size:0.8rem; box-shadow:0 8px 24px rgba(0,0,0,0.5); animation:slideIn 0.3s ease, fadeOut 0.4s ease 2.2s forwards; max-width:320px; }
         .toast.success { border-left:4px solid var(--green); }
         .toast.error { border-left:4px solid #e74c3c; }
         @keyframes slideIn { from{transform:translateX(120%);opacity:0;} to{transform:translateX(0);opacity:1;} }
-        @keyframes fadeOut { to{opacity:0;transform:translateY(-10px);} }
-        .notification-popup { position:fixed; bottom:30px; right:30px; background:var(--surface); border:2px solid var(--accent); border-radius:var(--radius); padding:20px 24px; z-index:300; box-shadow:0 20px 60px rgba(0,0,0,0.8); max-width:380px; animation:slideUp 0.3s ease; }
-        @keyframes slideUp { from{transform:translateY(100px);opacity:0;} to{transform:translateY(0);opacity:1;} }
-        .notification-popup h4 { color:var(--accent); margin-bottom:10px; }
-        .notification-popup p { margin-bottom:14px; font-size:0.9rem; }
-        .notification-popup .btn { width:100%; }
-        .suggestion-card { background:var(--surface); border-left:4px solid var(--blue); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px; font-size:0.85rem; }
-        .alert-banner { background:var(--accent); color:#000; padding:12px 18px; border-radius:var(--radius); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; font-weight:700; }
-        .alert-banner button { background:none; border:none; color:#000; font-size:1.2rem; cursor:pointer; }
+        @keyframes fadeOut { to{opacity:0;transform:translateY(-8px);} }
+        .notification-popup { position:fixed; bottom:24px; right:24px; background:var(--surface); border:2px solid var(--accent); border-radius:var(--radius); padding:18px 22px; z-index:300; box-shadow:0 16px 48px rgba(0,0,0,0.8); max-width:360px; animation:slideUp 0.3s ease; }
+        @keyframes slideUp { from{transform:translateY(80px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+        .notification-popup h4 { color:var(--accent); margin-bottom:8px; font-size:0.9rem; text-transform:uppercase; }
+        .notification-popup p { margin-bottom:12px; font-size:0.8rem; }
+        .suggestion-card { background:var(--surface); border-left:4px solid var(--blue); border-radius:var(--radius); padding:12px 16px; margin-bottom:8px; font-size:0.8rem; font-weight:600; }
+        .alert-banner { background:var(--accent); color:#000; padding:10px 16px; border-radius:var(--radius); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:0.8rem; text-transform:uppercase; }
+        .alert-banner button { background:none; border:none; color:#000; font-size:1.2rem; cursor:pointer; font-weight:700; }
+        .scanner-container { position:relative; width:100%; max-width:400px; margin:0 auto; border-radius:10px; overflow:hidden; background:#000; }
+        #scannerVideo { width:100%; height:auto; display:block; }
+        .scan-region-highlight { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:180px; height:70px; border:2px dashed var(--accent); border-radius:10px; pointer-events:none; }
+        .alias-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+        .alias-row input { flex:1; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:0.85rem; font-family:var(--font); text-transform:uppercase; }
     </style>
 </head>
 <body>
     <div id="notificationContainer"></div>
     <header class="header">
-        <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2L4 12h3v8h10v-8h3L12 2zm-1 8h2v6h-2v-6zm0 8h2v2h-2v-2z"/></svg><span>Toner<span style="color:var(--accent);">Track</span></span></div>
+        <div class="logo">TONER<span>TRACK</span> PRO</div>
         <div class="header-actions" id="headerActions">
-            <button class="btn btn-primary" id="btnReceive" onclick="openReceiveModal()">📥 Receive</button>
-            <button class="btn btn-outline" id="btnOutgoing" onclick="openOutgoingModal()">📤 Outgoing</button>
-            <button class="btn btn-sm btn-outline" onclick="exportCSV()">📊 CSV</button>
-            <button class="btn btn-sm btn-outline" onclick="printReport()">🖨️ Report</button>
-            <button class="btn btn-sm btn-outline" onclick="exportData()">💾 Backup</button>
-            <button class="btn btn-sm btn-outline" onclick="document.getElementById('importFile').click()">📂 Restore</button>
+            <button class="btn btn-primary" id="btnReceive" onclick="openReceiveModal()">RECEIVE</button>
+            <button class="btn btn-outline" id="btnOutgoing" onclick="openOutgoingModal()">OUTGOING</button>
+            <button class="btn btn-sm btn-outline" onclick="openAliasModal()">ALIASES</button>
+            <button class="btn btn-sm btn-outline" onclick="exportCSV()">CSV</button>
+            <button class="btn btn-sm btn-outline" onclick="printReport()">REPORT</button>
+            <button class="btn btn-sm btn-outline" onclick="exportData()">BACKUP</button>
+            <button class="btn btn-sm btn-outline" onclick="document.getElementById('importFile').click()">RESTORE</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-            <button class="btn btn-sm btn-outline" onclick="openSettingsModal()">⚙️ Settings</button>
+            <button class="btn btn-sm btn-outline" onclick="openSettingsModal()">SETTINGS</button>
         </div>
     </header>
     <div class="container">
         <div class="stat-row" id="statRow"></div>
         <div class="paint-line-mini-cards" id="miniCardsRow"></div>
         <div class="chart-row">
-            <div class="chart-container"><h4>📊 Stock by Paint Line</h4><canvas id="barChart" height="200"></canvas></div>
-            <div class="chart-container"><h4>💰 Spending Last 4 Weeks</h4><canvas id="spendingChart" height="200"></canvas></div>
+            <div class="chart-container"><h4>STOCK BY PAINT LINE</h4><canvas id="barChart" height="180"></canvas></div>
+            <div class="chart-container"><h4>SPENDING LAST 4 WEEKS</h4><canvas id="spendingChart" height="180"></canvas></div>
         </div>
-        <div id="suggestionsWidget" style="margin-bottom:20px;"></div>
+        <div id="suggestionsWidget" style="margin-bottom:16px;"></div>
         <div class="tabs" id="mainTabs">
-            <button class="tab active" data-tab="inventory">📋 Inventory</button>
-            <button class="tab" data-tab="orders">📦 Orders</button>
-            <button class="tab" data-tab="history">📜 History</button>
-            <button class="tab" data-tab="lowstock">⚠️ Low Stock</button>
+            <button class="tab active" data-tab="inventory">INVENTORY</button>
+            <button class="tab" data-tab="orders">ORDERS</button>
+            <button class="tab" data-tab="history">HISTORY</button>
+            <button class="tab" data-tab="lowstock">LOW STOCK</button>
         </div>
         <div class="panel active" id="panel-inventory">
-            <div id="lowStockBanner" class="alert-banner" style="display:none;"><span>⚠️ Some toners are below minimum stock!</span><button onclick="this.parentElement.style.display='none'">✕</button></div>
+            <div id="lowStockBanner" class="alert-banner" style="display:none;"><span>LOW STOCK ALERT</span><button onclick="this.parentElement.style.display='none'">X</button></div>
             <div class="line-tabs" id="lineTabs"></div>
-            <div class="search-bar" style="display:flex;gap:8px;margin-bottom:16px;">
-                <input type="text" id="searchInventory" placeholder="🔍 Search..." oninput="renderInventory()" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('searchInventory').value='';renderInventory();">Clear</button>
+            <div class="search-bar" style="display:flex;gap:8px;margin-bottom:14px;">
+                <input type="text" id="searchInventory" placeholder="SEARCH..." oninput="renderInventory()" style="flex:1; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-weight:600; text-transform:uppercase;">
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('searchInventory').value='';renderInventory();">CLEAR</button>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Line</th><th>Toner Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Avg Cost</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody id="inventoryBody"></tbody></table><div class="empty-state" id="inventoryEmpty" style="display:none;">📭 No toners found.</div></div>
+            <div class="table-wrap"><table><thead><tr><th></th><th>LINE</th><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>AVG COST</th><th>STATUS</th><th>UPDATED</th><th>OUT</th></tr></thead><tbody id="inventoryBody"></tbody><tfoot id="quickAddRow"></tfoot></table><div class="empty-state" id="inventoryEmpty" style="display:none;">NO TONERS FOUND</div></div>
         </div>
         <div class="panel" id="panel-orders">
-            <button class="btn btn-primary" onclick="openCreateOrderModal()">+ New Order</button>
-            <button class="btn btn-sm btn-outline" onclick="reorderLowStock()" style="margin-left:8px;">🔄 Reorder Low</button>
-            <select id="orderFilter" onchange="renderOrders()" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);margin-left:10px;"><option value="pending">Pending</option><option value="partial">Partial</option><option value="complete">Complete</option><option value="all">All</option></select>
-            <div id="ordersList" style="margin-top:16px;"></div>
+            <button class="btn btn-primary" onclick="openCreateOrderModal()">NEW ORDER</button>
+            <button class="btn btn-sm btn-outline" onclick="reorderLowStock()" style="margin-left:8px;">REORDER LOW</button>
+            <select id="orderFilter" onchange="renderOrders()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);margin-left:8px;font-weight:700;"><option value="pending">PENDING</option><option value="partial">PARTIAL</option><option value="complete">COMPLETE</option><option value="all">ALL</option></select>
+            <div id="ordersList" style="margin-top:14px;"></div>
         </div>
         <div class="panel" id="panel-history">
-            <div style="display:flex;gap:8px;margin-bottom:16px;">
-                <input type="text" id="searchHistory" placeholder="🔍 Search..." oninput="renderHistory()" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
-                <select id="filterType" onchange="renderHistory()" style="padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><option value="all">All</option><option value="in">📥 In</option><option value="out">📤 Out</option></select>
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+                <input type="text" id="searchHistory" placeholder="SEARCH..." oninput="renderHistory()" style="flex:1; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-weight:600; text-transform:uppercase;">
+                <select id="filterType" onchange="renderHistory()" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><option value="all">ALL</option><option value="in">IN</option><option value="out">OUT</option></select>
             </div>
-            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Line</th><th>Code</th><th>Qty</th><th>Cost/Unit</th><th>Customer/Supplier</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>DATE</th><th>TYPE</th><th>LINE</th><th>TONER NUMBER</th><th>QTY</th><th>COST/UNIT</th><th>CUSTOMER/SUPPLIER</th></tr></thead><tbody id="historyBody"></tbody></table></div>
         </div>
         <div class="panel" id="panel-lowstock">
-            <div class="table-wrap"><table><thead><tr><th>Line</th><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Avg Cost</th><th>Deficit</th></tr></thead><tbody id="lowStockBody"></tbody></table></div>
+            <div class="table-wrap"><table><thead><tr><th>LINE</th><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>AVG COST</th><th>DEFICIT</th></tr></thead><tbody id="lowStockBody"></tbody></table></div>
         </div>
     </div>
-    <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>📥 Receive Toner</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="recDate" required></div><div class="form-group"><label>Toner Code *</label><input type="text" id="recCode" required></div></div><div class="form-row"><div class="form-group"><label>Paint Line *</label><select id="recLine" required></select></div><div class="form-group"><label>Color</label><input type="text" id="recColor"></div></div><div class="form-row"><div class="form-group"><label>Quantity *</label><input type="number" id="recQty" value="1" min="1"></div><div class="form-group"><label>Unit Cost ($)</label><input type="number" id="recCost" step="0.01" min="0"></div></div><div class="form-row"><div class="form-group"><label>Supplier</label><input type="text" id="recSupplier"></div><div class="form-group"><label>Min Level</label><input type="number" id="recMin" value="3" min="0"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">Done</button><button type="submit" class="btn btn-green">✅ Confirm</button></div></form></div></div>
-    <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>📤 Toner Outgoing</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="outDate" required></div><div class="form-group"><label>Toner Code *</label><input type="text" id="outCode" required list="tonerSuggest"></div></div><div class="form-row"><div class="form-group"><label>Quantity *</label><input type="number" id="outQty" value="1" min="1"></div><div class="form-group"><label>Customer</label><input type="text" id="outCustomer"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">Done</button><button type="submit" class="btn btn-primary">✅ Confirm</button></div></form></div></div>
-    <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3>⚙️ Settings</h3><h4>Paint Lines</h4><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:8px;">+ Add Line</button><h4 style="margin-top:24px;">Suppliers</h4><div id="supplierList"></div><button class="btn btn-sm btn-outline" id="addSupplierBtn" style="margin-top:8px;">+ Add Supplier</button><h4 style="margin-top:24px;">Device Mode</h4><select id="deviceMode" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><option value="full">Full</option><option value="receive">Receive Only</option><option value="outgoing">Outgoing Only</option></select><div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button><button class="btn btn-green" onclick="saveAllSettings()">💾 Save All</button></div></div></div>
-    <div class="modal-overlay" id="createOrderModal" style="display:none;"><div class="modal"><h3>📦 New Order</h3><form onsubmit="createOrder(event)"><div class="form-row"><div class="form-group"><label>Supplier</label><select id="orderSupplier" required></select></div><div class="form-group"><label>Expected Delivery</label><input type="date" id="orderDelivery" required></div></div><div class="form-group"><label>Notes / PO</label><input type="text" id="orderNotes"><h4>Items</h4><div id="orderItems"></div><button type="button" class="btn btn-sm btn-outline" onclick="addOrderItem()">+ Add Item</button></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeCreateOrderModal()">Cancel</button><button type="submit" class="btn btn-green">✅ Create</button></div></form></div></div>
+
+    <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">RECEIVE TONER</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="recDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="recCode" placeholder="SCAN BARCODE" required oninput="resolveBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('recCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER</label><input type="text" id="recTonerNumber" placeholder="TONER NUMBER" style="text-transform:uppercase;font-weight:700;"></div><div class="form-group"><label>PAINT LINE</label><select id="recLine" required></select></div></div><div class="form-row"><div class="form-group"><label>COLOR</label><input type="text" id="recColor"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="recQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>UNIT COST ($)</label><input type="number" id="recCost" step="0.01" min="0"></div><div class="form-group"><label>SUPPLIER</label><input type="text" id="recSupplier"></div></div><div class="form-row"><div class="form-group"><label>MIN LEVEL</label><input type="number" id="recMin" value="3" min="0"></div><div class="form-group"><label>NOTES</label><input type="text" id="recNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">DONE</button><button type="submit" class="btn btn-green">CONFIRM</button></div></form></div></div>
+    <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">OUTGOING TONER</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="outDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="outCode" placeholder="SCAN BARCODE" required list="tonerSuggest" oninput="resolveOutBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('outCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER (AUTO)</label><input type="text" id="outTonerNumber" readonly style="background:#0b1219;font-weight:700;text-transform:uppercase;"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>CUSTOMER</label><input type="text" id="outCustomer"></div><div class="form-group"><label>LINE (AUTO)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.8rem;margin-bottom:10px;display:none;font-weight:700;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">DONE</button><button type="submit" class="btn btn-primary">CONFIRM</button></div></form></div></div>
+    <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">SETTINGS</h3><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);">PAINT LINES</h4><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:6px;">ADD LINE</button><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);margin-top:20px;">SUPPLIERS</h4><div id="supplierList"></div><button class="btn btn-sm btn-outline" id="addSupplierBtn" style="margin-top:6px;">ADD SUPPLIER</button><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);margin-top:20px;">DEVICE MODE</h4><select id="deviceMode" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><option value="full">FULL</option><option value="receive">RECEIVE ONLY</option><option value="outgoing">OUTGOING ONLY</option></select><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">CANCEL</button><button class="btn btn-green" onclick="saveAllSettings()">SAVE ALL</button></div></div></div>
+    <div class="modal-overlay" id="createOrderModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">NEW ORDER</h3><form onsubmit="createOrder(event)"><div class="form-row"><div class="form-group"><label>SUPPLIER</label><select id="orderSupplier" required></select></div><div class="form-group"><label>EXPECTED DELIVERY</label><input type="date" id="orderDelivery" required></div></div><div class="form-group"><label>NOTES / PO</label><input type="text" id="orderNotes"><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);margin-bottom:8px;">ITEMS</h4><div id="orderItems"></div><button type="button" class="btn btn-sm btn-outline" onclick="addOrderItem()">ADD ITEM</button></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeCreateOrderModal()">CANCEL</button><button type="submit" class="btn btn-green">CREATE</button></div></form></div></div>
+    <div class="modal-overlay" id="aliasModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:12px;">BARCODE ALIASES</h3><p style="font-size:0.8rem;margin-bottom:12px;color:var(--text2);">MAP SCANNER BARCODES TO YOUR INTERNAL TONER NUMBERS.</p><div id="aliasList"></div><button class="btn btn-sm btn-outline" id="addAliasBtn" style="margin-top:8px;">ADD ALIAS</button><div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeAliasModal()">CANCEL</button><button class="btn btn-green" onclick="saveAliases()">SAVE</button></div></div></div>
+    <div class="modal-overlay" id="scannerModal" style="display:none;"><div class="modal" style="text-align:center;"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:12px;">SCAN BARCODE</h3><div class="scanner-container"><video id="scannerVideo" autoplay playsinline></video><div class="scan-region-highlight"></div></div><p style="font-size:0.75rem;color:var(--text2);margin:8px 0;">POINT CAMERA AT BARCODE</p><button class="btn btn-outline" onclick="stopScanner()">CLOSE</button><p id="scannerError" style="color:#e74c3c;font-size:0.75rem;display:none;"></p></div></div>
     <div class="toast-container" id="toastContainer"></div>
     <datalist id="tonerSuggest"></datalist>
 
@@ -168,15 +175,15 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const DEFAULT_LINES = ['Line 1', 'Line 2', 'Line 3'];
-        let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], editingCell = null;
+        const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
+        let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
         let deviceMode = localStorage.getItem('tonerMode') || 'full';
         let currentLineFilter = '__ALL__';
 
         db.collection('inventory').onSnapshot(s => { const n = {}; s.forEach(d => n[d.id] = d.data()); inventory = n; if(!editingCell) refreshUI(); });
         db.collection('history').orderBy('timestamp','desc').onSnapshot(s => { history = []; s.forEach(d => history.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
         db.collection('orders').orderBy('createdAt','desc').onSnapshot(s => { ordersList = []; s.forEach(d => ordersList.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
-        db.collection('settings').doc('config').onSnapshot(d => { if(d.exists){ const data = d.data(); if(data.lines) lines = data.lines; if(data.suppliers) suppliers = data.suppliers; } else { db.collection('settings').doc('config').set({lines:DEFAULT_LINES,suppliers:[]}); lines=[...DEFAULT_LINES]; suppliers=[]; } if(!editingCell) refreshUI(); });
+        db.collection('settings').doc('config').onSnapshot(d => { if(d.exists){ const data = d.data(); if(data.lines) lines = data.lines; if(data.suppliers) suppliers = data.suppliers; if(data.aliases) aliases = data.aliases; if(data.rowOrder) rowOrder = data.rowOrder; } else { db.collection('settings').doc('config').set({lines:DEFAULT_LINES,suppliers:[],aliases:{},rowOrder:[]}); lines=[...DEFAULT_LINES]; suppliers=[]; aliases={}; rowOrder=[]; } if(!editingCell) refreshUI(); });
 
         function refreshUI() {
             renderLineTabs(); renderInventory(); renderOrders(); renderHistory(); renderLowStock();
@@ -185,37 +192,141 @@
             document.getElementById('lowStockBanner').style.display = anyLow ? 'flex' : 'none';
         }
 
+        function resolveAlias(barcode) { const clean = (barcode||'').trim().toUpperCase(); return aliases[clean] || clean; }
+
+        window.resolveBarcode = function() {
+            const input = document.getElementById('recCode'); if(!input) return;
+            const resolved = resolveAlias(input.value);
+            if(resolved !== input.value) { input.value = resolved; }
+            const toner = inventory[resolved];
+            document.getElementById('recTonerNumber').value = resolved;
+            if(toner) {
+                document.getElementById('recLine').value = toner.line||''; document.getElementById('recColor').value = toner.color||'';
+                document.getElementById('recMin').value = toner.minLevel||3; document.getElementById('recSupplier').value = toner.supplier||'';
+            }
+        };
+
+        window.resolveOutBarcode = function() {
+            const input = document.getElementById('outCode'); if(!input) return;
+            const resolved = resolveAlias(input.value);
+            if(resolved !== input.value) { input.value = resolved; }
+            const toner = inventory[resolved];
+            document.getElementById('outTonerNumber').value = resolved;
+            document.getElementById('outLineDisplay').value = toner ? toner.line : '';
+        };
+
         function renderLineTabs() {
             const container = document.getElementById('lineTabs'); if(!container) return;
             container.innerHTML = '';
-            const allBtn = document.createElement('span');
-            allBtn.className = 'line-tab' + (currentLineFilter==='__ALL__'?' active':'');
-            allBtn.textContent = 'All'; allBtn.style.cursor = 'pointer';
+            const allBtn = document.createElement('span'); allBtn.className = 'line-tab' + (currentLineFilter==='__ALL__'?' active':'');
+            allBtn.textContent = 'ALL'; allBtn.style.cursor = 'pointer';
             allBtn.onclick = function(){ currentLineFilter = '__ALL__'; renderLineTabs(); renderInventory(); };
             container.appendChild(allBtn);
             lines.forEach(function(line){
-                const btn = document.createElement('span');
-                btn.className = 'line-tab' + (currentLineFilter===line?' active':'');
+                const btn = document.createElement('span'); btn.className = 'line-tab' + (currentLineFilter===line?' active':'');
                 btn.textContent = line; btn.style.cursor = 'pointer';
                 btn.onclick = function(){ currentLineFilter = line; renderLineTabs(); renderInventory(); };
                 container.appendChild(btn);
             });
         }
 
+        function getOrderedInventory() {
+            const all = Object.values(inventory);
+            if (!rowOrder || rowOrder.length === 0) return all;
+            const ordered = rowOrder.map(code => inventory[code]).filter(t => t);
+            all.forEach(t => { if (!ordered.find(o => o.code === t.code)) ordered.push(t); });
+            return ordered;
+        }
+
+        async function saveRowOrder() {
+            rowOrder = []; document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => rowOrder.push(r.getAttribute('data-code')));
+            await db.collection('settings').doc('config').update({ rowOrder });
+        }
+
         function renderInventory() {
             if(editingCell) return;
-            const search = (document.getElementById('searchInventory')?.value||'').toLowerCase();
-            let filtered = Object.values(inventory).filter(t => (currentLineFilter==='__ALL__'||t.line===currentLineFilter));
-            if(search) filtered = filtered.filter(t => t.code.toLowerCase().includes(search)||(t.color||'').toLowerCase().includes(search));
+            const search = (document.getElementById('searchInventory')?.value||'').toUpperCase();
+            let ordered = getOrderedInventory().filter(t => (currentLineFilter==='__ALL__'||t.line===currentLineFilter));
+            if(search) ordered = ordered.filter(t => t.code.toUpperCase().includes(search)||(t.color||'').toUpperCase().includes(search));
             const tbody = document.getElementById('inventoryBody'); tbody.innerHTML = '';
-            document.getElementById('inventoryEmpty').style.display = filtered.length?'none':'block';
-            filtered.forEach(t => {
+            document.getElementById('inventoryEmpty').style.display = ordered.length?'none':'block';
+            ordered.forEach(t => {
                 const isLow = t.stock < t.minLevel;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${t.line||'?'}</td><td><strong>${t.code}</strong></td><td>${t.color}</td><td style="font-weight:700;"><span class="editable-stock" onclick="startInlineEdit(this,'${t.code}','stock')">${t.stock}</span></td><td><span class="editable-min" onclick="startInlineEdit(this,'${t.code}','min')">${t.minLevel}</span></td><td>$${(t.cost||0).toFixed(2)}</td><td>${isLow?'<span class="badge badge-low">⚠ Low</span>':'<span class="badge badge-in">OK</span>'}</td><td>${t.lastUpdated||''}</td><td><button class="btn btn-sm btn-outline" onclick="quickOutgoing('${t.code}')">📤</button></td>`;
+                const tr = document.createElement('tr'); tr.setAttribute('data-code', t.code);
+                tr.innerHTML = `<td class="drag-handle">⋮⋮</td>
+                    <td><span class="cell-editable" data-field="line" data-code="${t.code}">${t.line||'?'}</span></td>
+                    <td style="font-weight:700;"><span class="cell-editable" data-field="code" data-code="${t.code}">${t.code}</span></td>
+                    <td><span class="cell-editable" data-field="color" data-code="${t.code}">${t.color}</span></td>
+                    <td style="font-weight:700;"><span class="cell-editable" data-field="stock" data-code="${t.code}">${t.stock}</span></td>
+                    <td><span class="cell-editable" data-field="min" data-code="${t.code}">${t.minLevel}</span></td>
+                    <td><span class="cell-editable" data-field="cost" data-code="${t.code}">$${(t.cost||0).toFixed(2)}</span></td>
+                    <td>${isLow?'<span class="badge-low">LOW</span>':'OK'}</td>
+                    <td>${t.lastUpdated||''}</td>
+                    <td><button class="btn btn-sm btn-outline" onclick="quickOutgoing('${t.code}')">OUT</button></td>`;
                 tbody.appendChild(tr);
+                tr.querySelectorAll('.cell-editable').forEach(span => {
+                    span.addEventListener('click', function() { startInlineEdit(this); });
+                });
             });
+            // Quick-add row
+            document.getElementById('quickAddRow').innerHTML = `<tr class="quick-add-row">
+                <td></td>
+                <td><select id="qaLine" style="width:100%;padding:6px;border-radius:4px;border:1px dashed var(--accent);background:transparent;color:var(--text);font-size:0.8rem;">${lines.map(l=>`<option value="${l}">${l}</option>`).join('')}</select></td>
+                <td><input type="text" id="qaCode" placeholder="TONER NUMBER"></td>
+                <td><input type="text" id="qaColor" placeholder="COLOR"></td>
+                <td><input type="number" id="qaStock" placeholder="QTY" min="0" value="0"></td>
+                <td><input type="number" id="qaMin" placeholder="MIN" min="0" value="3"></td>
+                <td><input type="number" id="qaCost" placeholder="COST" step="0.01" min="0"></td>
+                <td></td><td></td>
+                <td><button class="btn btn-sm btn-green" onclick="quickAddToner()">ADD</button></td>
+            </tr>`;
+            if (window.Sortable) {
+                new Sortable(tbody, { animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost', onEnd: saveRowOrder });
+            }
+            updateStats(); updateMiniCards();
         }
+
+        window.startInlineEdit = function(span) {
+            if(editingCell) return;
+            const field = span.getAttribute('data-field'), code = span.getAttribute('data-code');
+            editingCell = { code, field };
+            const current = span.textContent.replace('$','');
+            const input = document.createElement('input'); input.type = field==='stock'||field==='min'||field==='cost' ? 'number' : 'text';
+            input.value = field==='cost' ? current : span.textContent;
+            input.step = field==='cost' ? '0.01' : '1'; input.min = (field==='stock'||field==='min'||field==='cost') ? '0' : '';
+            span.replaceWith(input); input.focus();
+            input.addEventListener('blur', () => saveInlineEdit(input, code, field));
+            input.addEventListener('keydown', (e) => { if(e.key==='Enter') input.blur(); });
+        };
+
+        async function saveInlineEdit(input, code, field) {
+            const val = input.value.trim();
+            const ref = db.collection('inventory').doc(code);
+            const doc = await ref.get();
+            if(!doc.exists) { editingCell = null; refreshUI(); return; }
+            const updates = { lastUpdated: todayISO() };
+            if (field === 'stock') updates.stock = parseInt(val) || 0;
+            else if (field === 'min') updates.minLevel = parseInt(val) || 0;
+            else if (field === 'cost') updates.cost = parseFloat(val) || 0;
+            else if (field === 'code') { if (val && val !== code) { await ref.delete(); await db.collection('inventory').doc(val.toUpperCase()).set({...doc.data(), code: val.toUpperCase()}); } }
+            else if (field === 'color') updates.color = val;
+            else if (field === 'line') updates.line = val;
+            await ref.update(updates);
+            editingCell = null; refreshUI();
+        }
+
+        window.quickAddToner = async () => {
+            const code = document.getElementById('qaCode').value.trim().toUpperCase();
+            if(!code) { showToast('TONER NUMBER REQUIRED','error'); return; }
+            const line = document.getElementById('qaLine').value, color = document.getElementById('qaColor').value.trim();
+            const stock = parseInt(document.getElementById('qaStock').value)||0, min = parseInt(document.getElementById('qaMin').value)||3;
+            const cost = parseFloat(document.getElementById('qaCost').value)||0;
+            const ref = db.collection('inventory').doc(code); const doc = await ref.get();
+            if(!doc.exists){ await ref.set({code,color:color||'N/A',stock,minLevel:min,lastUpdated:todayISO(),line,supplier:'',cost,totalSpent:cost*stock}); }
+            else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO()}); }
+            document.getElementById('qaCode').value=''; document.getElementById('qaColor').value=''; document.getElementById('qaStock').value='0'; document.getElementById('qaCost').value='';
+            showToast(`${code} ADDED`,'success');
+        };
 
         function renderOrders() {
             const filter = document.getElementById('orderFilter')?.value||'pending';
@@ -225,8 +336,8 @@
             else if(filter==='complete') filtered = ordersList.filter(o=>o.status==='complete');
             const container = document.getElementById('ordersList'); container.innerHTML = '';
             filtered.forEach(ord => {
-                const card = document.createElement('div'); card.style.background='var(--surface)'; card.style.padding='16px'; card.style.marginBottom='12px'; card.style.borderRadius='12px';
-                card.innerHTML = `<strong>${ord.supplier}</strong> (${ord.status})<br>Expected: ${ord.expectedDelivery}<br>Items: ${ord.items?.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')||''}`;
+                const card = document.createElement('div'); card.style.background='var(--surface)'; card.style.padding='14px'; card.style.marginBottom='10px'; card.style.borderRadius='10px'; card.style.border='1px solid var(--border)';
+                card.innerHTML = `<strong style="text-transform:uppercase;">${ord.supplier}</strong> (${ord.status.toUpperCase()})<br>Expected: ${ord.expectedDelivery}<br>Items: ${ord.items?.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')||''}`;
                 container.appendChild(card);
             });
         }
@@ -235,7 +346,7 @@
             const tbody = document.getElementById('historyBody'); tbody.innerHTML = '';
             history.slice(0,50).forEach(h => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${h.date}</td><td>${h.type}</td><td>${h.line||''}</td><td>${h.tonerCode}</td><td>${h.quantity}</td><td>$${(h.costPerUnit||0).toFixed(2)}</td><td>${h.customerOrSupplier||''}</td>`;
+                tr.innerHTML = `<td>${h.date}</td><td style="font-weight:700;">${h.type.toUpperCase()}</td><td>${h.line||''}</td><td style="font-weight:700;">${h.tonerCode}</td><td>${h.quantity}</td><td>$${(h.costPerUnit||0).toFixed(2)}</td><td>${h.customerOrSupplier||''}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -245,7 +356,7 @@
             const tbody = document.getElementById('lowStockBody'); tbody.innerHTML = '';
             low.forEach(t => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.minLevel-t.stock}</td>`;
+                tr.innerHTML = `<td>${t.line}</td><td style="font-weight:700;">${t.code}</td><td>${t.color}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.minLevel-t.stock}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -254,20 +365,20 @@
             const filtered = currentLineFilter==='__ALL__'?Object.values(inventory):Object.values(inventory).filter(t=>t.line===currentLineFilter);
             const unique = filtered.length, total = filtered.reduce((s,t)=>s+t.stock,0), low = filtered.filter(t=>t.stock<t.minLevel).length;
             const totalValue = filtered.reduce((s,t)=>s+(t.stock*(t.cost||0)),0);
-            document.getElementById('statRow').innerHTML = `<div class="stat-card"><div class="label">📦 Unique</div><div class="value blue">${unique}</div></div><div class="stat-card"><div class="label">📋 Total Units</div><div class="value green">${total}</div></div><div class="stat-card"><div class="label">💰 Total Value</div><div class="value" style="color:#2d9cdb;">$${totalValue.toFixed(0)}</div></div><div class="stat-card"><div class="label">⚠️ Low Stock</div><div class="value red">${low}</div></div>`;
+            document.getElementById('statRow').innerHTML = `<div class="stat-card"><div class="label">UNIQUE</div><div class="value" style="color:var(--blue);">${unique}</div></div><div class="stat-card"><div class="label">TOTAL UNITS</div><div class="value" style="color:var(--green);">${total}</div></div><div class="stat-card"><div class="label">TOTAL VALUE</div><div class="value" style="color:var(--blue);">$${totalValue.toFixed(0)}</div></div><div class="stat-card"><div class="label">LOW STOCK</div><div class="value" style="color:var(--accent);">${low}</div></div>`;
         }
 
         function updateMiniCards() {
             const container = document.getElementById('miniCardsRow'); container.innerHTML = '';
             const totalValue = Object.values(inventory).reduce((s,t)=>s+(t.stock*(t.cost||0)),0);
             const totalCard = document.createElement('div'); totalCard.className='mini-card';
-            totalCard.innerHTML = `<div class="line-name">Total Stock Value</div><div class="line-stats">$${totalValue.toFixed(2)}</div>`; container.appendChild(totalCard);
+            totalCard.innerHTML = `<div class="line-name">TOTAL STOCK VALUE</div><div class="line-stats">$${totalValue.toFixed(2)}</div>`; container.appendChild(totalCard);
             lines.forEach(line => {
                 const lineToners = Object.values(inventory).filter(t=>t.line===line);
                 const units = lineToners.reduce((s,t)=>s+t.stock,0), value = lineToners.reduce((s,t)=>s+(t.stock*(t.cost||0)),0);
                 const card = document.createElement('div'); card.className='mini-card';
                 card.onclick = function(){ currentLineFilter = line; renderLineTabs(); renderInventory(); };
-                card.innerHTML = `<div class="line-name">${line}</div><div class="line-stats">${units} units | $${value.toFixed(2)}</div>`; container.appendChild(card);
+                card.innerHTML = `<div class="line-name">${line}</div><div class="line-stats">${units} UNITS | $${value.toFixed(2)}</div>`; container.appendChild(card);
             });
         }
 
@@ -275,10 +386,10 @@
             const canvas = document.getElementById('barChart'); if(!canvas) return;
             const ctx = canvas.getContext('2d');
             const data = lines.map(line => ({line, stock: Object.values(inventory).filter(t=>t.line===line).reduce((s,t)=>s+t.stock,0)}));
-            const max = Math.max(...data.map(d=>d.stock),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=200;
-            ctx.clearRect(0,0,w,200); const barWidth = (w-(data.length+1)*20)/data.length;
-            const gradient = ctx.createLinearGradient(0,0,0,200); gradient.addColorStop(0,'#f68523'); gradient.addColorStop(1,'#e0741a');
-            data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.stock/max)*140; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,180-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 12px Inter'; ctx.textAlign='center'; ctx.fillText(d.stock,x+barWidth/2,178-barH-6); ctx.fillStyle='#9ba5b0'; ctx.font='11px Inter'; ctx.fillText(d.line,x+barWidth/2,195); });
+            const max = Math.max(...data.map(d=>d.stock),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=180;
+            ctx.clearRect(0,0,w,180); const barWidth = (w-(data.length+1)*20)/data.length;
+            const gradient = ctx.createLinearGradient(0,0,0,180); gradient.addColorStop(0,'#f68523'); gradient.addColorStop(1,'#e0741a');
+            data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.stock/max)*130; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,160-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.fillText(d.stock,x+barWidth/2,158-barH-4); ctx.fillStyle='#9ba5b0'; ctx.font='10px Inter'; ctx.fillText(d.line,x+barWidth/2,173); });
         }
 
         function drawSpendingChart() {
@@ -289,206 +400,74 @@
             const spending = {}; lines.forEach(l=>spending[l]=0);
             recentIn.forEach(h=>{ if(spending[h.line]!==undefined) spending[h.line] += (h.costPerUnit||0)*h.quantity; });
             const data = lines.map(line=>({line,spent:spending[line]||0}));
-            const max = Math.max(...data.map(d=>d.spent),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=200;
-            ctx.clearRect(0,0,w,200); const barWidth = (w-(data.length+1)*20)/data.length;
-            const gradient = ctx.createLinearGradient(0,0,0,200); gradient.addColorStop(0,'#2d9cdb'); gradient.addColorStop(1,'#1a6fa0');
-            data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.spent/max)*140; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,180-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 12px Inter'; ctx.textAlign='center'; ctx.fillText('$'+d.spent.toFixed(0),x+barWidth/2,178-barH-6); ctx.fillStyle='#9ba5b0'; ctx.font='11px Inter'; ctx.fillText(d.line,x+barWidth/2,195); });
+            const max = Math.max(...data.map(d=>d.spent),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=180;
+            ctx.clearRect(0,0,w,180); const barWidth = (w-(data.length+1)*20)/data.length;
+            const gradient = ctx.createLinearGradient(0,0,0,180); gradient.addColorStop(0,'#2d9cdb'); gradient.addColorStop(1,'#1a6fa0');
+            data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.spent/max)*130; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,160-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.fillText('$'+d.spent.toFixed(0),x+barWidth/2,158-barH-4); ctx.fillStyle='#9ba5b0'; ctx.font='10px Inter'; ctx.fillText(d.line,x+barWidth/2,173); });
         }
         window.addEventListener('resize',()=>{ drawBarChart(); drawSpendingChart(); });
 
-        // ──────────────────────────────────────
-        // SELF‑LEARNING SUGGESTIONS
-        // ──────────────────────────────────────
         function updateSuggestions() {
-            const container = document.getElementById('suggestionsWidget');
-            const suggestions = [];
+            const container = document.getElementById('suggestionsWidget'); const suggestions = [];
             const lowToners = Object.values(inventory).filter(t => t.stock < t.minLevel);
             if (lowToners.length > 0) {
-                const bySupplier = {};
-                lowToners.forEach(t => { const s = t.supplier || 'Unknown'; if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); });
-                Object.entries(bySupplier).forEach(([supplier, toners]) => {
-                    suggestions.push(`💡 <strong>Reorder from ${supplier}:</strong> ${toners.map(t=>t.code).join(', ')} (${toners.length} toners low)`);
-                });
+                const bySupplier = {}; lowToners.forEach(t => { const s = t.supplier || 'UNKNOWN'; if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); });
+                Object.entries(bySupplier).forEach(([supplier, toners]) => { suggestions.push(`REORDER FROM ${supplier}: ${toners.map(t=>t.code).join(', ')} (${toners.length} TONERS LOW)`); });
             }
-            Object.values(inventory).forEach(t => {
-                if (t.stock > t.minLevel * 3 && t.stock > 10) {
-                    suggestions.push(`⚠️ <strong>${t.code}:</strong> Overstocked (${t.stock} vs min ${t.minLevel}). Consider reducing.`);
-                }
-                const recentIn = history.filter(h => h.tonerCode === t.code && h.type === 'in');
-                if (recentIn.length >= 2) {
-                    const cheapest = recentIn.reduce((min, curr) => (curr.costPerUnit||999) < (min.costPerUnit||999) ? curr : min, recentIn[0]);
-                    if (cheapest.costPerUnit < (t.cost||0) * 0.9) {
-                        suggestions.push(`💰 <strong>${t.code}:</strong> Last bought at $${t.cost.toFixed(2)} from ${t.supplier}, but ${cheapest.customerOrSupplier} offered $${cheapest.costPerUnit.toFixed(2)}.`);
-                    }
-                }
-            });
+            Object.values(inventory).forEach(t => { if (t.stock > t.minLevel * 3 && t.stock > 10) { suggestions.push(`OVERSTOCKED: ${t.code} (${t.stock} VS MIN ${t.minLevel}). CONSIDER REDUCING.`); } });
+            Object.values(inventory).forEach(t => { const recentIn = history.filter(h => h.tonerCode === t.code && h.type === 'in'); if (recentIn.length >= 2) { const cheapest = recentIn.reduce((min, curr) => (curr.costPerUnit||999) < (min.costPerUnit||999) ? curr : min, recentIn[0]); if (cheapest.costPerUnit < (t.cost||0) * 0.9) { suggestions.push(`COST SAVING: ${t.code} LAST BOUGHT AT $${t.cost.toFixed(2)} FROM ${t.supplier}, BUT ${cheapest.customerOrSupplier} OFFERED $${cheapest.costPerUnit.toFixed(2)}.`); } } });
             container.innerHTML = suggestions.slice(0,5).map(s => `<div class="suggestion-card">${s}</div>`).join('');
         }
 
-        // ──────────────────────────────────────
-        // LOW‑STOCK POP‑UP WITH SOUND
-        // ──────────────────────────────────────
         const playAlertChime = () => { try { const ctx = new (window.AudioContext||window.webkitAudioContext)(); [660,880].forEach((f,i)=>{const o=ctx.createOscillator();const g=ctx.createGain();o.type='sine';o.frequency.value=f;g.gain.value=0.15;o.connect(g);g.connect(ctx.destination);o.start(ctx.currentTime+i*0.15);o.stop(ctx.currentTime+i*0.15+0.15);}); setTimeout(()=>ctx.close(),400); } catch(e) {} };
-        function showNotification(title, message, type='info') {
-            const container = document.getElementById('notificationContainer');
-            const popup = document.createElement('div'); popup.className = 'notification-popup';
-            popup.innerHTML = `<h4>${type==='low'?'⚠️':type==='out'?'✅':'💡'} ${title}</h4><p>${message}</p><button class="btn btn-primary" onclick="this.parentElement.remove()">OK</button>`;
-            container.appendChild(popup);
-            if (type === 'low') playAlertChime();
-        }
+        function showNotification(title, message, type='info') { const container = document.getElementById('notificationContainer'); const popup = document.createElement('div'); popup.className = 'notification-popup'; popup.innerHTML = `<h4>${type==='low'?'LOW STOCK':type==='out'?'OUTGOING':'INFO'} ${title}</h4><p>${message}</p><button class="btn btn-primary" onclick="this.parentElement.remove()">OK</button>`; container.appendChild(popup); if (type === 'low') playAlertChime(); }
 
-        // ──────────────────────────────────────
-        // REORDER LOW‑STOCK BY SUPPLIER
-        // ──────────────────────────────────────
-        window.reorderLowStock = () => {
-            const low = Object.values(inventory).filter(t => t.stock < t.minLevel);
-            if (low.length === 0) { showToast('No low-stock toners.','error'); return; }
-            const bySupplier = {};
-            low.forEach(t => { const s = t.supplier || 'Unknown'; if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); });
-            const firstSupplier = Object.keys(bySupplier)[0];
-            document.getElementById('createOrderModal').style.display='flex';
-            populateSupplierSelect('orderSupplier', firstSupplier);
-            document.getElementById('orderDelivery').value = '';
-            document.getElementById('orderNotes').value = 'Low-stock reorder';
-            const container = document.getElementById('orderItems'); container.innerHTML = '';
-            bySupplier[firstSupplier].forEach(t => {
-                const div = document.createElement('div'); div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px';
-                div.innerHTML = `<input type="text" value="${t.code}" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="number" value="${Math.max(t.minLevel*2-t.stock,1)}" min="1" style="width:80px;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>`;
-                container.appendChild(div);
-            });
-        };
+        window.reorderLowStock = () => { const low = Object.values(inventory).filter(t => t.stock < t.minLevel); if (low.length === 0) { showToast('NO LOW-STOCK TONERS.','error'); return; } const bySupplier = {}; low.forEach(t => { const s = t.supplier || 'UNKNOWN'; if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); }); const firstSupplier = Object.keys(bySupplier)[0]; document.getElementById('createOrderModal').style.display='flex'; populateSupplierSelect('orderSupplier', firstSupplier); document.getElementById('orderDelivery').value = ''; document.getElementById('orderNotes').value = 'LOW-STOCK REORDER'; const container = document.getElementById('orderItems'); container.innerHTML = ''; bySupplier[firstSupplier].forEach(t => { const div = document.createElement('div'); div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px'; div.innerHTML = `<input type="text" value="${t.code}" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="number" value="${Math.max(t.minLevel*2-t.stock,1)}" min="1" style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`; container.appendChild(div); }); };
 
-        function updateTonerSuggest() {
-            const datalist = document.getElementById('tonerSuggest'); datalist.innerHTML = '';
-            Object.values(inventory).forEach(t=>{ const opt = document.createElement('option'); opt.value = t.code; datalist.appendChild(opt); });
-        }
-
-        function applyDeviceMode() {
-            const mode = localStorage.getItem('tonerMode')||'full';
-            const btnReceive = document.getElementById('btnReceive'), btnOutgoing = document.getElementById('btnOutgoing');
-            if(mode==='receive'){ btnReceive.style.display=''; btnOutgoing.style.display='none'; }
-            else if(mode==='outgoing'){ btnReceive.style.display='none'; btnOutgoing.style.display=''; }
-            else { btnReceive.style.display=''; btnOutgoing.style.display=''; }
-        }
-
-        window.startInlineEdit = function(span, code, field) {
-            if(editingCell) return; editingCell = {code,field};
-            const input = document.createElement('input'); input.type='number'; input.value=span.textContent; input.min='0';
-            input.style.width='60px'; input.style.padding='4px'; input.style.borderRadius='4px'; input.style.border='1px solid var(--accent)'; input.style.background='var(--surface2)'; input.style.color='var(--text)'; input.style.fontWeight='700';
-            span.replaceWith(input); input.focus();
-            input.addEventListener('blur',()=>saveInlineEdit(input,code,field));
-            input.addEventListener('keydown',(e)=>{ if(e.key==='Enter') input.blur(); });
-        };
-        async function saveInlineEdit(input, code, field) {
-            const newValue = parseInt(input.value); if(isNaN(newValue)||newValue<0){ editingCell=null; return; }
-            const tonerRef = db.collection('inventory').doc(code);
-            try { if(field==='stock') await tonerRef.update({stock:newValue,lastUpdated:todayISO()}); else await tonerRef.update({minLevel:newValue,lastUpdated:todayISO()}); } catch(e){}
-            editingCell = null;
-        }
+        function updateTonerSuggest() { const datalist = document.getElementById('tonerSuggest'); datalist.innerHTML = ''; Object.values(inventory).forEach(t=>{ const opt = document.createElement('option'); opt.value = t.code; datalist.appendChild(opt); }); }
+        function applyDeviceMode() { const mode = localStorage.getItem('tonerMode')||'full'; const btnReceive = document.getElementById('btnReceive'), btnOutgoing = document.getElementById('btnOutgoing'); if(mode==='receive'){ btnReceive.style.display=''; btnOutgoing.style.display='none'; } else if(mode==='outgoing'){ btnReceive.style.display='none'; btnOutgoing.style.display=''; } else { btnReceive.style.display=''; btnOutgoing.style.display=''; } }
 
         const todayISO = () => new Date().toISOString().slice(0,10);
-        const showToast = (msg,type='success')=>{ const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),2700); };
+        const showToast = (msg,type='success')=>{ const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),2200); };
 
-        window.quickOutgoing = (code) => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=code; document.getElementById('outDate').value=todayISO(); };
+        window.quickOutgoing = (code) => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=code; document.getElementById('outDate').value=todayISO(); resolveOutBarcode(); };
         window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
         window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
         window.openOutgoingModal = () => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outDate').value=todayISO(); };
         window.closeOutgoingModal = () => document.getElementById('outgoingModal').style.display='none';
         window.openCreateOrderModal = () => { document.getElementById('createOrderModal').style.display='flex'; populateSupplierSelect('orderSupplier'); document.getElementById('orderItems').innerHTML=''; addOrderItem(); };
         window.closeCreateOrderModal = () => document.getElementById('createOrderModal').style.display='none';
-        window.addOrderItem = () => { const c=document.getElementById('orderItems'); const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="Code" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="number" value="1" min="1" style="width:80px;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>'; c.appendChild(d); };
+        window.addOrderItem = () => { const c=document.getElementById('orderItems'); const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="TONER NUMBER" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="number" value="1" min="1" style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>'; c.appendChild(d); };
 
-        window.openSettingsModal = () => {
-            document.getElementById('settingsModal').style.display='flex';
-            const lc = document.getElementById('lineSettingsFields'); lc.innerHTML = '';
-            lines.forEach(l=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${l}" style="width:100%;padding:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">`; lc.appendChild(d); });
-            document.getElementById('addLineBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML='<input type="text" placeholder="New line" style="width:100%;padding:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">'; lc.appendChild(d); };
-            const sc = document.getElementById('supplierList'); sc.innerHTML = '';
-            suppliers.forEach(s=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${s.name||''}" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="email" value="${s.email||''}" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>`; sc.appendChild(d); });
-            document.getElementById('addSupplierBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="Name" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="email" placeholder="Email" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>'; sc.appendChild(d); };
-            document.getElementById('deviceMode').value = localStorage.getItem('tonerMode')||'full';
-        };
+        window.openSettingsModal = () => { document.getElementById('settingsModal').style.display='flex'; const lc = document.getElementById('lineSettingsFields'); lc.innerHTML = ''; lines.forEach(l=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${l}" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;">`; lc.appendChild(d); }); document.getElementById('addLineBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML='<input type="text" placeholder="NEW LINE NAME" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;">'; lc.appendChild(d); }; const sc = document.getElementById('supplierList'); sc.innerHTML = ''; suppliers.forEach(s=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${s.name||''}" placeholder="NAME" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="email" value="${s.email||''}" placeholder="EMAIL" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`; sc.appendChild(d); }); document.getElementById('addSupplierBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="SUPPLIER NAME" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="email" placeholder="EMAIL" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>'; sc.appendChild(d); }; document.getElementById('deviceMode').value = localStorage.getItem('tonerMode')||'full'; };
         window.closeSettingsModal = () => document.getElementById('settingsModal').style.display='none';
-        window.saveAllSettings = async () => {
-            const inputs = document.querySelectorAll('#lineSettingsFields input'); const nl = []; inputs.forEach(i=>{ const v=i.value.trim(); if(v)nl.push(v); });
-            if(nl.length===0){ showToast('Need at least 1 line','error'); return; }
-            const sds = document.querySelectorAll('#supplierList > div'); const ns = []; sds.forEach(d=>{ const ins=d.querySelectorAll('input'); const name=ins[0].value.trim(), email=ins[1].value.trim(); if(name)ns.push({name,email}); });
-            const mode = document.getElementById('deviceMode').value; localStorage.setItem('tonerMode',mode);
-            await db.collection('settings').doc('config').update({lines:nl,suppliers:ns}); closeSettingsModal(); showToast('Settings saved!','success'); applyDeviceMode();
-        };
+        window.saveAllSettings = async () => { const inputs = document.querySelectorAll('#lineSettingsFields input'); const nl = []; inputs.forEach(i=>{ const v=i.value.trim().toUpperCase(); if(v)nl.push(v); }); if(nl.length===0){ showToast('NEED AT LEAST 1 LINE','error'); return; } const sds = document.querySelectorAll('#supplierList > div'); const ns = []; sds.forEach(d=>{ const ins=d.querySelectorAll('input'); const name=ins[0].value.trim(), email=ins[1].value.trim(); if(name)ns.push({name,email}); }); const mode = document.getElementById('deviceMode').value; localStorage.setItem('tonerMode',mode); await db.collection('settings').doc('config').update({lines:nl,suppliers:ns}); closeSettingsModal(); showToast('SETTINGS SAVED','success'); applyDeviceMode(); };
 
         function populateLineSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; lines.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; if(l===sel)o.selected=true; s.appendChild(o); }); }
         function populateSupplierSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; suppliers.forEach(sp=>{ const o=document.createElement('option'); o.value=sp.name; o.textContent=sp.name; if(sp.name===sel)o.selected=true; s.appendChild(o); }); }
 
-        window.handleReceive = async (e) => {
-            e.preventDefault(); const line=document.getElementById('recLine').value, code=document.getElementById('recCode').value.trim().toUpperCase();
-            if(!line||!code){ showToast('Code and line required','error'); return; }
-            const qty=parseInt(document.getElementById('recQty').value)||0, cost=parseFloat(document.getElementById('recCost').value)||0;
-            const supplier=document.getElementById('recSupplier').value.trim(), min=parseInt(document.getElementById('recMin').value)||3;
-            const date=document.getElementById('recDate').value, color=document.getElementById('recColor').value.trim();
-            const ref=db.collection('inventory').doc(code); const doc=await ref.get();
-            if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:min,lastUpdated:date,line,supplier,cost,totalSpent:cost*qty}); }
-            else { const ex=doc.data(); const ns=(ex.stock||0)+qty, nts=(ex.totalSpent||0)+(cost*qty); await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?nts/ns:0,totalSpent:nts,lastUpdated:date}); }
-            await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:cost,timestamp:Date.now()});
-            showToast(`✅ ${code} received`,'success'); document.getElementById('recCode').value=''; document.getElementById('recQty').value='1'; document.getElementById('recCost').value=''; document.getElementById('recCode').focus();
-        };
+        window.handleReceive = async (e) => { e.preventDefault(); const line=document.getElementById('recLine').value, code=document.getElementById('recTonerNumber').value.trim().toUpperCase() || document.getElementById('recCode').value.trim().toUpperCase(); if(!line||!code){ showToast('TONER NUMBER AND LINE REQUIRED','error'); return; } const qty=parseInt(document.getElementById('recQty').value)||0, cost=parseFloat(document.getElementById('recCost').value)||0; const supplier=document.getElementById('recSupplier').value.trim(), min=parseInt(document.getElementById('recMin').value)||3; const date=document.getElementById('recDate').value, color=document.getElementById('recColor').value.trim(); const ref=db.collection('inventory').doc(code); const doc=await ref.get(); if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:min,lastUpdated:date,line,supplier,cost,totalSpent:cost*qty}); } else { const ex=doc.data(); const ns=(ex.stock||0)+qty, nts=(ex.totalSpent||0)+(cost*qty); await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?nts/ns:0,totalSpent:nts,lastUpdated:date}); } await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:cost,timestamp:Date.now()}); showToast(`${code} RECEIVED`,'success'); document.getElementById('recCode').value=''; document.getElementById('recTonerNumber').value=''; document.getElementById('recQty').value='1'; document.getElementById('recCost').value=''; document.getElementById('recCode').focus(); };
+        window.handleOutgoing = async (e) => { e.preventDefault(); const code=document.getElementById('outTonerNumber').value.trim().toUpperCase() || document.getElementById('outCode').value.trim().toUpperCase(), qty=parseInt(document.getElementById('outQty').value)||0; const ref=db.collection('inventory').doc(code); const doc=await ref.get(); if(!doc.exists){ showToast('TONER NOT FOUND','error'); return; } const t=doc.data(); if(t.stock<qty){ showToast(`ONLY ${t.stock} AVAILABLE`,'error'); return; } await ref.update({stock:t.stock-qty,lastUpdated:document.getElementById('outDate').value}); await db.collection('history').add({date:document.getElementById('outDate').value,type:'out',tonerCode:code,quantity:qty,customerOrSupplier:document.getElementById('outCustomer').value.trim()||'WALK-IN',line:t.line,costPerUnit:t.cost||0,timestamp:Date.now()}); showNotification('OUTGOING',`${qty} ${code} SHIPPED. ${t.stock-qty} LEFT.`,'out'); showToast(`${code} SHIPPED`,'success'); document.getElementById('outCode').value=''; document.getElementById('outTonerNumber').value=''; document.getElementById('outQty').value='1'; document.getElementById('outCode').focus(); };
+        window.createOrder = async (e) => { e.preventDefault(); const supplier=document.getElementById('orderSupplier').value, delivery=document.getElementById('orderDelivery').value, notes=document.getElementById('orderNotes').value; if(!supplier||!delivery){ showToast('SUPPLIER AND DATE REQUIRED','error'); return; } const items=[], divs=document.querySelectorAll('#orderItems > div'); divs.forEach(d=>{ const ins=d.querySelectorAll('input'); const code=ins[0].value.trim().toUpperCase(), qty=parseInt(ins[1].value)||0; if(code&&qty>0) items.push({tonerCode:code,quantityOrdered:qty,quantityReceived:0,color:inventory[code]?.color||'N/A',line:inventory[code]?.line||lines[0]}); }); if(items.length===0){ showToast('ADD AT LEAST ONE ITEM','error'); return; } const supplierData = suppliers.find(s=>s.name===supplier); let estCost = 0; items.forEach(i=>{ const t=inventory[i.tonerCode]; if(t?.cost) estCost += t.cost * i.quantityOrdered; }); await db.collection('orders').add({supplier,supplierEmail:supplierData?.email||'',orderDate:todayISO(),expectedDelivery:delivery,status:'pending',items,notes,estimatedCost:estCost,createdAt:Date.now()}); closeCreateOrderModal(); showToast(`ORDER CREATED. EST COST: $${estCost.toFixed(2)}`,'success'); };
 
-        window.handleOutgoing = async (e) => {
-            e.preventDefault(); const code=document.getElementById('outCode').value.trim().toUpperCase(), qty=parseInt(document.getElementById('outQty').value)||0;
-            const ref=db.collection('inventory').doc(code); const doc=await ref.get();
-            if(!doc.exists){ showToast('Toner not found','error'); return; }
-            const t=doc.data(); if(t.stock<qty){ showToast(`Only ${t.stock} available`,'error'); return; }
-            await ref.update({stock:t.stock-qty,lastUpdated:document.getElementById('outDate').value});
-            await db.collection('history').add({date:document.getElementById('outDate').value,type:'out',tonerCode:code,quantity:qty,customerOrSupplier:document.getElementById('outCustomer').value.trim()||'Walk-in',line:t.line,costPerUnit:t.cost||0,timestamp:Date.now()});
-            showNotification('Outgoing',`${qty} ${code} shipped. ${t.stock-qty} left.`,'out');
-            showToast(`📤 ${code} shipped`,'success'); document.getElementById('outCode').value=''; document.getElementById('outQty').value='1'; document.getElementById('outCode').focus();
-        };
+        function generateReportHTML() { const toners = Object.values(inventory).sort((a,b)=>(a.line||'').localeCompare(b.line||'')||a.code.localeCompare(b.code)); const low = toners.filter(t=>t.stock<t.minLevel); const pending = ordersList.filter(o=>o.status==='pending'||o.status==='partial'); let html = `<html><body style="font-family:Inter,Arial,sans-serif;max-width:800px;margin:auto;"><h2 style="color:#f68523;text-transform:uppercase;">TONERTRACK BI-WEEKLY REPORT</h2><p>DATE: ${new Date().toLocaleDateString()}</p>`; html += `<h3 style="text-transform:uppercase;">ALL TONERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr style="background:#f5f5f5;"><th>LINE</th><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>COST</th><th>STATUS</th></tr>`; toners.forEach(t=>{ html += `<tr><td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.stock<t.minLevel?'LOW':'OK'}</td></tr>`; }); html += `</table>`; if(low.length>0){ html += `<h3 style="color:#e74c3c;text-transform:uppercase;">LOW STOCK</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>LINE</th><th>TONER NUMBER</th><th>STOCK</th><th>MIN</th><th>DEFICIT</th></tr>`; low.forEach(t=>html+=`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${t.minLevel-t.stock}</td></tr>`); html+=`</table>`; } if(pending.length>0){ html += `<h3 style="text-transform:uppercase;">PENDING ORDERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>SUPPLIER</th><th>EXPECTED</th><th>ITEMS</th><th>STATUS</th></tr>`; pending.forEach(o=>html+=`<tr><td>${o.supplier}</td><td>${o.expectedDelivery}</td><td>${o.items.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')}</td><td>${o.status.toUpperCase()}</td></tr>`); html+=`</table>`; } html += `<h3 style="text-transform:uppercase;">SUPPLIER PURCHASE REPORTS</h3>`; const bySupplier = {}; low.forEach(t=>{ const s=t.supplier||'UNKNOWN'; if(!bySupplier[s]) bySupplier[s]=[]; bySupplier[s].push(t); }); Object.entries(bySupplier).forEach(([supplier,toners])=>{ html+=`<h4>${supplier}</h4><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>SUGGESTED REORDER</th></tr>`; toners.forEach(t=>html+=`<tr><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${Math.max(t.minLevel*2-t.stock,1)}</td></tr>`); html+=`</table>`; }); html += `</body></html>`; return html; }
 
-        window.createOrder = async (e) => {
-            e.preventDefault(); const supplier=document.getElementById('orderSupplier').value, delivery=document.getElementById('orderDelivery').value, notes=document.getElementById('orderNotes').value;
-            if(!supplier||!delivery){ showToast('Supplier and date required','error'); return; }
-            const items=[], divs=document.querySelectorAll('#orderItems > div');
-            divs.forEach(d=>{ const ins=d.querySelectorAll('input'); const code=ins[0].value.trim().toUpperCase(), qty=parseInt(ins[1].value)||0; if(code&&qty>0) items.push({tonerCode:code,quantityOrdered:qty,quantityReceived:0,color:inventory[code]?.color||'N/A',line:inventory[code]?.line||lines[0]}); });
-            if(items.length===0){ showToast('Add at least one item','error'); return; }
-            const supplierData = suppliers.find(s=>s.name===supplier);
-            let estCost = 0; items.forEach(i=>{ const t=inventory[i.tonerCode]; if(t?.cost) estCost += t.cost * i.quantityOrdered; });
-            await db.collection('orders').add({supplier,supplierEmail:supplierData?.email||'',orderDate:todayISO(),expectedDelivery:delivery,status:'pending',items,notes,estimatedCost:estCost,createdAt:Date.now()});
-            closeCreateOrderModal(); showToast(`Order created! Est. cost: $${estCost.toFixed(2)}`,'success');
-        };
-
-        // ──────────────────────────────────────
-        // BI‑WEEKLY REPORT (manual trigger)
-        // ──────────────────────────────────────
-        window.sendBiweeklyReport = async () => {
-            const reportHTML = generateReportHTML();
-            const blob = new Blob([reportHTML], {type:'text/html'});
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `TonerTrack_Report_${todayISO()}.html`; a.click();
-            showToast('📧 Report downloaded. Email it manually for now.','success');
-        };
-
-        function generateReportHTML() {
-            const toners = Object.values(inventory).sort((a,b)=>(a.line||'').localeCompare(b.line||'')||a.code.localeCompare(b.code));
-            const low = toners.filter(t=>t.stock<t.minLevel);
-            const pending = ordersList.filter(o=>o.status==='pending'||o.status==='partial');
-            let html = `<html><body style="font-family:Inter,Arial,sans-serif;max-width:800px;margin:auto;"><h2 style="color:#f68523;">TonerTrack Bi‑Weekly Report</h2><p>Date: ${new Date().toLocaleDateString()}</p>`;
-            html += `<h3>All Toners</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr style="background:#f5f5f5;"><th>Line</th><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Cost</th><th>Status</th></tr>`;
-            toners.forEach(t=>{ html += `<tr><td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.stock<t.minLevel?'⚠ Low':'OK'}</td></tr>`; });
-            html += `</table>`;
-            if(low.length>0){ html += `<h3 style="color:#e74c3c;">Low Stock</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>Line</th><th>Code</th><th>Stock</th><th>Min</th><th>Deficit</th></tr>`; low.forEach(t=>html+=`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${t.minLevel-t.stock}</td></tr>`); html+=`</table>`; }
-            if(pending.length>0){ html += `<h3>Pending Orders</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>Supplier</th><th>Expected</th><th>Items</th><th>Status</th></tr>`; pending.forEach(o=>html+=`<tr><td>${o.supplier}</td><td>${o.expectedDelivery}</td><td>${o.items.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')}</td><td>${o.status}</td></tr>`); html+=`</table>`; }
-            html += `<h3>Supplier Purchase Reports</h3>`;
-            const bySupplier = {}; low.forEach(t=>{ const s=t.supplier||'Unknown'; if(!bySupplier[s]) bySupplier[s]=[]; bySupplier[s].push(t); });
-            Object.entries(bySupplier).forEach(([supplier,toners])=>{ html+=`<h4>${supplier}</h4><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Suggested Reorder</th></tr>`; toners.forEach(t=>html+=`<tr><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${Math.max(t.minLevel*2-t.stock,1)}</td></tr>`); html+=`</table>`; });
-            html += `</body></html>`;
-            return html;
-        }
-
-        window.exportCSV = () => { const inv=Object.values(inventory); const h=['Line','Code','Color','Stock','Min','Cost']; const r=inv.map(t=>[t.line||'',t.code,t.color,t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`inventory_${todayISO()}.csv`; a.click(); };
+        window.exportCSV = () => { const inv=Object.values(inventory); const h=['LINE','TONER NUMBER','COLOR','STOCK','MIN','COST']; const r=inv.map(t=>[t.line||'',t.code,t.color,t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`INVENTORY_${todayISO()}.csv`; a.click(); };
         window.printReport = () => { const html = generateReportHTML(); const w=window.open('','_blank'); w.document.write(html); w.document.close(); };
-        window.exportData = () => { const data={inventory,history,lines,suppliers,ordersList,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`backup_${todayISO()}.json`; a.click(); };
-        window.importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(data.inventory){ const batch=db.batch(); const ids=await db.collection('inventory').get(); ids.forEach(d=>batch.delete(d.ref)); Object.entries(data.inventory).forEach(([k,v])=>batch.set(db.collection('inventory').doc(k),v)); await batch.commit(); if(data.lines&&data.suppliers) await db.collection('settings').doc('config').set({lines:data.lines,suppliers:data.suppliers}); showToast('📂 Restored!','success'); } } catch{ showToast('Error','error'); } }; r.readAsText(f); e.target.value=''; };
+        window.exportData = () => { const data={inventory,history,lines,suppliers,aliases,rowOrder,ordersList,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`BACKUP_${todayISO()}.json`; a.click(); };
+        window.importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(data.inventory){ const batch=db.batch(); const ids=await db.collection('inventory').get(); ids.forEach(d=>batch.delete(d.ref)); Object.entries(data.inventory).forEach(([k,v])=>batch.set(db.collection('inventory').doc(k),v)); await batch.commit(); if(data.lines&&data.suppliers) await db.collection('settings').doc('config').set({lines:data.lines,suppliers:data.suppliers,aliases:data.aliases||{},rowOrder:data.rowOrder||[]}); showToast('DATA RESTORED','success'); } } catch{ showToast('ERROR READING FILE','error'); } }; r.readAsText(f); e.target.value=''; };
 
-        ['receiveModal','outgoingModal','settingsModal','createOrderModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
+        window.openAliasModal = () => { document.getElementById('aliasModal').style.display='flex'; renderAliasList(); };
+        window.closeAliasModal = () => document.getElementById('aliasModal').style.display='none';
+        const renderAliasList = () => { const container=document.getElementById('aliasList');container.innerHTML='';Object.entries(aliases).forEach(([barcode,toner])=>{const row=document.createElement('div');row.className='alias-row';row.innerHTML=`<input type="text" value="${barcode}" placeholder="BARCODE"><input type="text" value="${toner}" placeholder="TONER NUMBER"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`;container.appendChild(row);}); document.getElementById('addAliasBtn').onclick=()=>{const row=document.createElement('div');row.className='alias-row';row.innerHTML=`<input type="text" placeholder="BARCODE"><input type="text" placeholder="TONER NUMBER"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`;container.appendChild(row);}; };
+        window.saveAliases = async () => { const rows=document.querySelectorAll('#aliasList .alias-row');const newAliases={};rows.forEach(row=>{const barcode=row.querySelectorAll('input')[0].value.trim().toUpperCase();const toner=row.querySelectorAll('input')[1].value.trim().toUpperCase();if(barcode&&toner)newAliases[barcode]=toner;});await db.collection('settings').doc('config').update({aliases:newAliases});closeAliasModal();showToast('ALIASES SAVED','success'); };
+
+        let scannerStream=null,scannerTarget=null,scannerActive=false;
+        window.startScanner = async (targetFieldId) => { scannerTarget=targetFieldId;document.getElementById('scannerModal').style.display='flex';document.getElementById('scannerError').style.display='none';try{scannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});document.getElementById('scannerVideo').srcObject=scannerStream;scannerActive=true;detectBarcodes();}catch(err){document.getElementById('scannerError').textContent='CAMERA NOT AVAILABLE';document.getElementById('scannerError').style.display='block';} };
+        window.stopScanner = () => { scannerActive=false;if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}document.getElementById('scannerVideo').srcObject=null;document.getElementById('scannerModal').style.display='none'; };
+        const detectBarcodes = async () => { if(!scannerActive||!document.getElementById('scannerVideo').videoWidth){if(scannerActive)requestAnimationFrame(detectBarcodes);return;}try{if(!('BarcodeDetector' in window)){document.getElementById('scannerError').textContent='BARCODE DETECTOR NOT SUPPORTED';document.getElementById('scannerError').style.display='block';return;}const detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e']});const barcodes=await detector.detect(document.getElementById('scannerVideo'));if(barcodes.length>0&&scannerActive){const code=barcodes[0].rawValue;const input=document.getElementById(scannerTarget);if(input){input.value=code;if(scannerTarget==='recCode') resolveBarcode(); else if(scannerTarget==='outCode') resolveOutBarcode();}stopScanner();showToast(`SCANNED: ${code}`,'success');return;}}catch(e){}if(scannerActive)requestAnimationFrame(detectBarcodes); };
+
+        ['receiveModal','outgoingModal','settingsModal','createOrderModal','aliasModal','scannerModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
         document.querySelectorAll('#mainTabs .tab').forEach(tab=>{ tab.addEventListener('click',function(){ document.querySelectorAll('#mainTabs .tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); this.classList.add('active'); document.getElementById('panel-'+this.dataset.tab).classList.add('active'); if(this.dataset.tab==='history') renderHistory(); if(this.dataset.tab==='lowstock') renderLowStock(); if(this.dataset.tab==='orders') renderOrders(); }); });
         document.getElementById('recDate').value = todayISO();
         document.getElementById('outDate').value = todayISO();
