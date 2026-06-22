@@ -56,7 +56,7 @@
         .panel { display:none; }
         .panel.active { display:block; }
         .table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface); }
-        table { width:100%; border-collapse:collapse; font-size:0.85rem; min-width:1000px; }
+        table { width:100%; border-collapse:collapse; font-size:0.85rem; min-width:1100px; }
         th,td { padding:10px 10px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
         th { background:var(--surface2); font-weight:700; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); position:sticky; top:0; }
         tr:hover td { background:rgba(255,255,255,0.02); }
@@ -68,7 +68,7 @@
         .badge-low { display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.7rem; font-weight:700; background:rgba(243,156,18,0.2); color:var(--orange); animation:pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
         .quick-add-row td { padding:6px 8px; }
-        .quick-add-row input { width:100%; padding:6px 8px; border-radius:4px; border:1px dashed var(--accent); background:transparent; color:var(--text); font-size:0.8rem; font-family:var(--font); }
+        .quick-add-row input, .quick-add-row select { width:100%; padding:6px 8px; border-radius:4px; border:1px dashed var(--accent); background:transparent; color:var(--text); font-size:0.8rem; font-family:var(--font); }
         .quick-add-row input::placeholder { color:var(--text2); text-transform:uppercase; font-weight:600; }
         .form-group { margin-bottom:14px; }
         .form-group label { display:block; font-weight:700; font-size:0.75rem; margin-bottom:5px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; }
@@ -96,6 +96,9 @@
         .scan-region-highlight { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:180px; height:70px; border:2px dashed var(--accent); border-radius:10px; pointer-events:none; }
         .alias-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
         .alias-row input { flex:1; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:0.85rem; font-family:var(--font); text-transform:uppercase; }
+        .order-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px; }
+        .order-card .progress-bar { height:6px; background:var(--surface2); border-radius:3px; margin-top:10px; overflow:hidden; }
+        .order-card .progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.5s; }
     </style>
 </head>
 <body>
@@ -157,6 +160,7 @@
 
     <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">RECEIVE TONER</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="recDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="recCode" placeholder="SCAN BARCODE" required oninput="resolveBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('recCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER</label><input type="text" id="recTonerNumber" placeholder="TONER NUMBER" style="text-transform:uppercase;font-weight:700;"></div><div class="form-group"><label>PAINT LINE</label><select id="recLine" required></select></div></div><div class="form-row"><div class="form-group"><label>COLOR</label><input type="text" id="recColor"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="recQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>UNIT COST ($)</label><input type="number" id="recCost" step="0.01" min="0"></div><div class="form-group"><label>SUPPLIER</label><input type="text" id="recSupplier"></div></div><div class="form-row"><div class="form-group"><label>MIN LEVEL</label><input type="number" id="recMin" value="3" min="0"></div><div class="form-group"><label>NOTES</label><input type="text" id="recNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">DONE</button><button type="submit" class="btn btn-green">CONFIRM</button></div></form></div></div>
     <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">OUTGOING TONER</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="outDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="outCode" placeholder="SCAN BARCODE" required list="tonerSuggest" oninput="resolveOutBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('outCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER (AUTO)</label><input type="text" id="outTonerNumber" readonly style="background:#0b1219;font-weight:700;text-transform:uppercase;"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>CUSTOMER</label><input type="text" id="outCustomer"></div><div class="form-group"><label>LINE (AUTO)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.8rem;margin-bottom:10px;display:none;font-weight:700;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">DONE</button><button type="submit" class="btn btn-primary">CONFIRM</button></div></form></div></div>
+    <div class="modal-overlay" id="orderDetailModal" style="display:none;"><div class="modal" id="orderDetailContent"></div></div>
     <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">SETTINGS</h3><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);">PAINT LINES</h4><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:6px;">ADD LINE</button><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);margin-top:20px;">SUPPLIERS</h4><div id="supplierList"></div><button class="btn btn-sm btn-outline" id="addSupplierBtn" style="margin-top:6px;">ADD SUPPLIER</button><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);margin-top:20px;">DEVICE MODE</h4><select id="deviceMode" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><option value="full">FULL</option><option value="receive">RECEIVE ONLY</option><option value="outgoing">OUTGOING ONLY</option></select><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);margin-top:20px;">DATA TOOLS</h4><button class="btn btn-primary" onclick="fixDataSwapCodes()">SWAP CODES & TONER NUMBERS</button><p style="font-size:0.7rem;color:var(--text2);margin-top:4px;">MOVES TONER NUMBERS FROM COLOR FIELD TO CODE FIELD. USE ONCE.</p><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">CANCEL</button><button class="btn btn-green" onclick="saveAllSettings()">SAVE ALL</button></div></div></div>
     <div class="modal-overlay" id="createOrderModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:16px;">NEW ORDER</h3><form onsubmit="createOrder(event)"><div class="form-row"><div class="form-group"><label>SUPPLIER</label><select id="orderSupplier" required></select></div><div class="form-group"><label>EXPECTED DELIVERY</label><input type="date" id="orderDelivery" required></div></div><div class="form-group"><label>NOTES / PO</label><input type="text" id="orderNotes"><h4 style="text-transform:uppercase;font-weight:700;font-size:0.8rem;color:var(--text2);margin-bottom:8px;">ITEMS</h4><div id="orderItems"></div><button type="button" class="btn btn-sm btn-outline" onclick="addOrderItem()">ADD ITEM</button></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeCreateOrderModal()">CANCEL</button><button type="submit" class="btn btn-green">CREATE</button></div></form></div></div>
     <div class="modal-overlay" id="aliasModal" style="display:none;"><div class="modal"><h3 style="text-transform:uppercase;font-weight:800;margin-bottom:12px;">BARCODE ALIASES</h3><p style="font-size:0.8rem;margin-bottom:12px;color:var(--text2);">MAP SCANNER BARCODES TO YOUR INTERNAL TONER NUMBERS.</p><div id="aliasList"></div><button class="btn btn-sm btn-outline" id="addAliasBtn" style="margin-top:8px;">ADD ALIAS</button><div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeAliasModal()">CANCEL</button><button class="btn btn-green" onclick="saveAliases()">SAVE</button></div></div></div>
@@ -247,7 +251,7 @@
             if(editingCell) return;
             const search = (document.getElementById('searchInventory')?.value||'').toUpperCase();
             let ordered = getOrderedInventory().filter(t => (currentLineFilter==='__ALL__'||t.line===currentLineFilter));
-            if(search) ordered = ordered.filter(t => t.code.toUpperCase().includes(search)||(t.color||'').toUpperCase().includes(search)||(t.barcode||'').toUpperCase().includes(search));
+            if(search) ordered = ordered.filter(t => t.code.toUpperCase().includes(search)||(t.color||'').toUpperCase().includes(search)||(t.barcode||'').toUpperCase().includes(search)||(t.supplier||'').toUpperCase().includes(search));
             const tbody = document.getElementById('inventoryBody'); tbody.innerHTML = '';
             document.getElementById('inventoryEmpty').style.display = ordered.length?'none':'block';
             ordered.forEach(t => {
@@ -319,13 +323,13 @@
         window.quickAddToner = async () => {
             const code = document.getElementById('qaCode').value.trim().toUpperCase();
             if(!code) { showToast('TONER NUMBER REQUIRED','error'); return; }
-            const line = document.getElementById('qaLine').value, color = document.getElementById('qaColor')?.value?.trim()||'';
+            const line = document.getElementById('qaLine').value;
             const stock = parseInt(document.getElementById('qaStock').value)||0, min = parseInt(document.getElementById('qaMin').value)||3;
             const cost = parseFloat(document.getElementById('qaCost').value)||0, barcode = (document.getElementById('qaBarcode')?.value?.trim()||'').toUpperCase();
             const supplier = (document.getElementById('qaSupplier')?.value?.trim()||'').toUpperCase();
             const ref = db.collection('inventory').doc(code); const doc = await ref.get();
-            if(!doc.exists){ await ref.set({code,color:color||'N/A',stock,minLevel:min,lastUpdated:todayISO(),line,supplier,cost,totalSpent:cost*stock,barcode:barcode||code}); }
-            else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO(),barcode:barcode||ex.barcode||ex.code}); }
+            if(!doc.exists){ await ref.set({code,color:'',stock,minLevel:min,lastUpdated:todayISO(),line,supplier,cost,totalSpent:cost*stock,barcode:barcode||code}); }
+            else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO(),barcode:barcode||ex.barcode||ex.code}); }
             document.getElementById('qaCode').value=''; document.getElementById('qaStock').value='0'; document.getElementById('qaCost').value='';
             if(document.getElementById('qaBarcode')) document.getElementById('qaBarcode').value='';
             if(document.getElementById('qaSupplier')) document.getElementById('qaSupplier').value='';
@@ -340,10 +344,75 @@
             else if(filter==='complete') filtered = ordersList.filter(o=>o.status==='complete');
             const container = document.getElementById('ordersList'); container.innerHTML = '';
             filtered.forEach(ord => {
-                const card = document.createElement('div'); card.style.background='var(--surface)'; card.style.padding='14px'; card.style.marginBottom='10px'; card.style.borderRadius='10px'; card.style.border='1px solid var(--border)';
-                card.innerHTML = `<strong style="text-transform:uppercase;">${ord.supplier}</strong> (${ord.status.toUpperCase()})<br>Expected: ${ord.expectedDelivery}<br>Items: ${ord.items?.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')||''}`;
+                const total = ord.items.reduce((s,i)=>s+i.quantityOrdered,0);
+                const received = ord.items.reduce((s,i)=>s+i.quantityReceived,0);
+                const pct = total>0?Math.round((received/total)*100):0;
+                const card = document.createElement('div'); card.className='order-card';
+                card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><strong>${ord.supplier.toUpperCase()}</strong><span class="badge-${ord.status==='complete'?'in':'out'}" style="font-size:0.7rem;font-weight:700;">${ord.status.toUpperCase()}</span></div>
+                <p style="font-size:0.8rem;color:var(--text2);">Expected: ${ord.expectedDelivery} | Notes: ${ord.notes||'None'}</p>
+                <p style="font-size:0.8rem;">Received: ${received}/${total} items | Est. Cost: $${(ord.estimatedCost||0).toFixed(2)}</p>
+                <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+                <button class="btn btn-sm btn-outline" style="margin-top:10px;" onclick="openOrderDetail('${ord.id}')">VIEW / RECEIVE</button>`;
                 container.appendChild(card);
             });
+        }
+
+        window.openOrderDetail = (orderId) => {
+            const ord = ordersList.find(o => o.id === orderId); if (!ord) return;
+            document.getElementById('orderDetailModal').style.display = 'flex';
+            const container = document.getElementById('orderDetailContent');
+            const total = ord.items.reduce((s,i)=>s+i.quantityOrdered,0);
+            const received = ord.items.reduce((s,i)=>s+i.quantityReceived,0);
+            container.innerHTML = `<h3 style="text-transform:uppercase;font-weight:800;margin-bottom:12px;">ORDER DETAILS</h3>
+                <p><strong>SUPPLIER:</strong> ${ord.supplier}</p><p><strong>ORDER DATE:</strong> ${ord.orderDate}</p><p><strong>EXPECTED:</strong> ${ord.expectedDelivery}</p>
+                <p><strong>STATUS:</strong> ${ord.status} | <strong>RECEIVED:</strong> ${received}/${total}</p>
+                <p><strong>NOTES:</strong> ${ord.notes||'None'}</p>
+                <table style="width:100%;margin-top:12px;"><tr><th>CODE</th><th>COLOR</th><th>ORDERED</th><th>RECEIVED</th><th>ACTION</th></tr>
+                ${ord.items.map((item,i)=>`<tr><td>${item.tonerCode}</td><td>${item.color}</td><td>${item.quantityOrdered}</td><td>${item.quantityReceived}</td>
+                <td>${item.quantityReceived<item.quantityOrdered?`<button class="btn btn-sm btn-green" onclick="receiveOrderItem('${ord.id}',${i})">RECEIVE</button>`:'COMPLETE'}</td></tr>`).join('')}
+                </table>
+                <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+                    ${ord.status!=='complete'?`<button class="btn btn-primary" onclick="receiveAllOrder('${ord.id}')">RECEIVE ALL</button>`:''}
+                    <button class="btn btn-outline" onclick="closeOrderDetail()">CLOSE</button>
+                </div>`;
+        };
+
+        window.closeOrderDetail = () => { document.getElementById('orderDetailModal').style.display='none'; };
+
+        window.receiveOrderItem = async (orderId, itemIndex) => {
+            const ord = ordersList.find(o => o.id === orderId); if (!ord) return;
+            const item = ord.items[itemIndex];
+            const remaining = item.quantityOrdered - item.quantityReceived;
+            const qty = parseInt(prompt(`RECEIVE HOW MANY OF ${item.tonerCode}? (REMAINING: ${remaining})`, remaining));
+            if (!qty || qty <= 0 || qty > remaining) return;
+            ord.items[itemIndex].quantityReceived += qty;
+            const allReceived = ord.items.every(i => i.quantityReceived >= i.quantityOrdered);
+            await db.collection('orders').doc(orderId).update({ items: ord.items, status: allReceived?'complete':'partial', updatedAt: Date.now() });
+            await receiveTonerDirect(item.tonerCode, item.color, qty, ord.supplier, `ORDER: ${ord.notes||orderId}`, todayISO(), item.line);
+            showToast(`RECEIVED ${qty} OF ${item.tonerCode}`,'success');
+            closeOrderDetail();
+        };
+
+        window.receiveAllOrder = async (orderId) => {
+            if (!confirm('RECEIVE ALL REMAINING ITEMS IN THIS ORDER?')) return;
+            const ord = ordersList.find(o => o.id === orderId); if (!ord) return;
+            for (const item of ord.items) {
+                const remaining = item.quantityOrdered - item.quantityReceived;
+                if (remaining > 0) {
+                    await receiveTonerDirect(item.tonerCode, item.color, remaining, ord.supplier, `ORDER: ${ord.notes||orderId}`, todayISO(), item.line);
+                    item.quantityReceived = item.quantityOrdered;
+                }
+            }
+            await db.collection('orders').doc(orderId).update({ items: ord.items, status: 'complete', updatedAt: Date.now() });
+            showToast('ORDER FULLY RECEIVED!','success');
+            closeOrderDetail();
+        };
+
+        async function receiveTonerDirect(code, color, qty, supplier, notes, date, line) {
+            const ref = db.collection('inventory').doc(code); const doc = await ref.get();
+            if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:3,lastUpdated:date,line,supplier,cost:0,totalSpent:0}); }
+            else { const ex=doc.data(); await ref.update({stock:(ex.stock||0)+qty,lastUpdated:date,line:line||ex.line,supplier:supplier||ex.supplier||''}); }
+            await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:0,timestamp:Date.now()});
         }
 
         function renderHistory() {
@@ -449,20 +518,9 @@
 
         window.fixDataSwapCodes = async () => {
             if (!confirm('This will move your TONER NUMBERS from the COLOR field to the CODE field, and put barcodes in the SCAN CODE field. Continue?')) return;
-            const batch = db.batch();
-            const allDocs = await db.collection('inventory').get();
-            let count = 0;
-            allDocs.forEach(doc => {
-                const data = doc.data();
-                const oldCode = data.code || '';
-                const oldColor = data.color || '';
-                if (oldColor && oldColor !== oldCode && oldColor !== 'N/A') {
-                    const newData = { code: oldColor.toUpperCase(), color: oldColor, barcode: oldCode };
-                    batch.set(doc.ref, newData, { merge: true }); count++;
-                }
-            });
-            if (count > 0) { await batch.commit(); showToast(`${count} TONERS FIXED. TONER NUMBERS NOW IN CODE FIELD.`,'success'); }
-            else { showToast('NO TONERS NEEDED FIXING.','error'); }
+            const batch = db.batch(); const allDocs = await db.collection('inventory').get(); let count = 0;
+            allDocs.forEach(doc => { const data = doc.data(); const oldCode = data.code || ''; const oldColor = data.color || ''; if (oldColor && oldColor !== oldCode && oldColor !== 'N/A') { const newData = { code: oldColor.toUpperCase(), color: oldColor, barcode: oldCode }; batch.set(doc.ref, newData, { merge: true }); count++; } });
+            if (count > 0) { await batch.commit(); showToast(`${count} TONERS FIXED.`,'success'); } else { showToast('NO TONERS NEEDED FIXING.','error'); }
         };
 
         function populateLineSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; lines.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; if(l===sel)o.selected=true; s.appendChild(o); }); }
@@ -474,7 +532,7 @@
 
         function generateReportHTML() { const toners = Object.values(inventory).sort((a,b)=>(a.line||'').localeCompare(b.line||'')||a.code.localeCompare(b.code)); const low = toners.filter(t=>t.stock<t.minLevel); const pending = ordersList.filter(o=>o.status==='pending'||o.status==='partial'); let html = `<html><body style="font-family:Inter,Arial,sans-serif;max-width:800px;margin:auto;"><h2 style="color:#f68523;text-transform:uppercase;">TONERTRACK BI-WEEKLY REPORT</h2><p>DATE: ${new Date().toLocaleDateString()}</p>`; html += `<h3 style="text-transform:uppercase;">ALL TONERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr style="background:#f5f5f5;"><th>LINE</th><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>COST</th><th>STATUS</th></tr>`; toners.forEach(t=>{ html += `<tr><td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.stock<t.minLevel?'LOW':'OK'}</td></tr>`; }); html += `</table>`; if(low.length>0){ html += `<h3 style="color:#e74c3c;text-transform:uppercase;">LOW STOCK</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>LINE</th><th>TONER NUMBER</th><th>STOCK</th><th>MIN</th><th>DEFICIT</th></tr>`; low.forEach(t=>html+=`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${t.minLevel-t.stock}</td></tr>`); html+=`</table>`; } if(pending.length>0){ html += `<h3 style="text-transform:uppercase;">PENDING ORDERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>SUPPLIER</th><th>EXPECTED</th><th>ITEMS</th><th>STATUS</th></tr>`; pending.forEach(o=>html+=`<tr><td>${o.supplier}</td><td>${o.expectedDelivery}</td><td>${o.items.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')}</td><td>${o.status.toUpperCase()}</td></tr>`); html+=`</table>`; } html += `<h3 style="text-transform:uppercase;">SUPPLIER PURCHASE REPORTS</h3>`; const bySupplier = {}; low.forEach(t=>{ const s=t.supplier||'UNKNOWN'; if(!bySupplier[s]) bySupplier[s]=[]; bySupplier[s].push(t); }); Object.entries(bySupplier).forEach(([supplier,toners])=>{ html+=`<h4>${supplier}</h4><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>SUGGESTED REORDER</th></tr>`; toners.forEach(t=>html+=`<tr><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${Math.max(t.minLevel*2-t.stock,1)}</td></tr>`); html+=`</table>`; }); html += `</body></html>`; return html; }
 
-        window.exportCSV = () => { const inv=Object.values(inventory); const h=['LINE','SCAN CODE','TONER NUMBER','SUPPLIER','COLOR','STOCK','MIN','COST']; const r=inv.map(t=>[t.line||'',t.barcode||t.code,t.code,t.supplier||'',t.color,t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`INVENTORY_${todayISO()}.csv`; a.click(); };
+        window.exportCSV = () => { const inv=Object.values(inventory); const h=['LINE','SCAN CODE','TONER NUMBER','SUPPLIER','COLOR','STOCK','MIN','COST']; const r=inv.map(t=>[t.line||'',t.barcode||t.code,t.code,t.supplier||'',t.color||'',t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`INVENTORY_${todayISO()}.csv`; a.click(); };
         window.printReport = () => { const html = generateReportHTML(); const w=window.open('','_blank'); w.document.write(html); w.document.close(); };
         window.exportData = () => { const data={inventory,history,lines,suppliers,aliases,rowOrder,ordersList,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`BACKUP_${todayISO()}.json`; a.click(); };
         window.importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(data.inventory){ const batch=db.batch(); const ids=await db.collection('inventory').get(); ids.forEach(d=>batch.delete(d.ref)); Object.entries(data.inventory).forEach(([k,v])=>batch.set(db.collection('inventory').doc(k),v)); await batch.commit(); if(data.lines&&data.suppliers) await db.collection('settings').doc('config').set({lines:data.lines,suppliers:data.suppliers,aliases:data.aliases||{},rowOrder:data.rowOrder||[]}); showToast('DATA RESTORED','success'); } } catch{ showToast('ERROR READING FILE','error'); } }; r.readAsText(f); e.target.value=''; };
@@ -489,7 +547,7 @@
         window.stopScanner = () => { scannerActive=false;if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}document.getElementById('scannerVideo').srcObject=null;document.getElementById('scannerModal').style.display='none'; };
         const detectBarcodes = async () => { if(!scannerActive||!document.getElementById('scannerVideo').videoWidth){if(scannerActive)requestAnimationFrame(detectBarcodes);return;}try{if(!('BarcodeDetector' in window)){document.getElementById('scannerError').textContent='BARCODE DETECTOR NOT SUPPORTED';document.getElementById('scannerError').style.display='block';return;}const detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e']});const barcodes=await detector.detect(document.getElementById('scannerVideo'));if(barcodes.length>0&&scannerActive){const code=barcodes[0].rawValue;const input=document.getElementById(scannerTarget);if(input){input.value=code;if(scannerTarget==='recCode') resolveBarcode(); else if(scannerTarget==='outCode') resolveOutBarcode();}stopScanner();showToast(`SCANNED: ${code}`,'success');return;}}catch(e){}if(scannerActive)requestAnimationFrame(detectBarcodes); };
 
-        ['receiveModal','outgoingModal','settingsModal','createOrderModal','aliasModal','scannerModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
+        ['receiveModal','outgoingModal','orderDetailModal','settingsModal','createOrderModal','aliasModal','scannerModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
         document.querySelectorAll('#mainTabs .tab').forEach(tab=>{ tab.addEventListener('click',function(){ document.querySelectorAll('#mainTabs .tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); this.classList.add('active'); document.getElementById('panel-'+this.dataset.tab).classList.add('active'); if(this.dataset.tab==='history') renderHistory(); if(this.dataset.tab==='lowstock') renderLowStock(); if(this.dataset.tab==='orders') renderOrders(); }); });
         document.getElementById('recDate').value = todayISO();
         document.getElementById('outDate').value = todayISO();
