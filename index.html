@@ -85,9 +85,18 @@
         .toast.error { border-left:4px solid #e74c3c; }
         @keyframes slideIn { from{transform:translateX(120%);opacity:0;} to{transform:translateX(0);opacity:1;} }
         @keyframes fadeOut { to{opacity:0;transform:translateY(-10px);} }
+        .notification-popup { position:fixed; bottom:30px; right:30px; background:var(--surface); border:2px solid var(--accent); border-radius:var(--radius); padding:20px 24px; z-index:300; box-shadow:0 20px 60px rgba(0,0,0,0.8); max-width:380px; animation:slideUp 0.3s ease; }
+        @keyframes slideUp { from{transform:translateY(100px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+        .notification-popup h4 { color:var(--accent); margin-bottom:10px; }
+        .notification-popup p { margin-bottom:14px; font-size:0.9rem; }
+        .notification-popup .btn { width:100%; }
+        .suggestion-card { background:var(--surface); border-left:4px solid var(--blue); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px; font-size:0.85rem; }
+        .alert-banner { background:var(--accent); color:#000; padding:12px 18px; border-radius:var(--radius); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; font-weight:700; }
+        .alert-banner button { background:none; border:none; color:#000; font-size:1.2rem; cursor:pointer; }
     </style>
 </head>
 <body>
+    <div id="notificationContainer"></div>
     <header class="header">
         <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2L4 12h3v8h10v-8h3L12 2zm-1 8h2v6h-2v-6zm0 8h2v2h-2v-2z"/></svg><span>Toner<span style="color:var(--accent);">Track</span></span></div>
         <div class="header-actions" id="headerActions">
@@ -108,6 +117,7 @@
             <div class="chart-container"><h4>📊 Stock by Paint Line</h4><canvas id="barChart" height="200"></canvas></div>
             <div class="chart-container"><h4>💰 Spending Last 4 Weeks</h4><canvas id="spendingChart" height="200"></canvas></div>
         </div>
+        <div id="suggestionsWidget" style="margin-bottom:20px;"></div>
         <div class="tabs" id="mainTabs">
             <button class="tab active" data-tab="inventory">📋 Inventory</button>
             <button class="tab" data-tab="orders">📦 Orders</button>
@@ -115,6 +125,7 @@
             <button class="tab" data-tab="lowstock">⚠️ Low Stock</button>
         </div>
         <div class="panel active" id="panel-inventory">
+            <div id="lowStockBanner" class="alert-banner" style="display:none;"><span>⚠️ Some toners are below minimum stock!</span><button onclick="this.parentElement.style.display='none'">✕</button></div>
             <div class="line-tabs" id="lineTabs"></div>
             <div class="search-bar" style="display:flex;gap:8px;margin-bottom:16px;">
                 <input type="text" id="searchInventory" placeholder="🔍 Search..." oninput="renderInventory()" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
@@ -124,6 +135,7 @@
         </div>
         <div class="panel" id="panel-orders">
             <button class="btn btn-primary" onclick="openCreateOrderModal()">+ New Order</button>
+            <button class="btn btn-sm btn-outline" onclick="reorderLowStock()" style="margin-left:8px;">🔄 Reorder Low</button>
             <select id="orderFilter" onchange="renderOrders()" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);margin-left:10px;"><option value="pending">Pending</option><option value="partial">Partial</option><option value="complete">Complete</option><option value="all">All</option></select>
             <div id="ordersList" style="margin-top:16px;"></div>
         </div>
@@ -166,7 +178,12 @@
         db.collection('orders').orderBy('createdAt','desc').onSnapshot(s => { ordersList = []; s.forEach(d => ordersList.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
         db.collection('settings').doc('config').onSnapshot(d => { if(d.exists){ const data = d.data(); if(data.lines) lines = data.lines; if(data.suppliers) suppliers = data.suppliers; } else { db.collection('settings').doc('config').set({lines:DEFAULT_LINES,suppliers:[]}); lines=[...DEFAULT_LINES]; suppliers=[]; } if(!editingCell) refreshUI(); });
 
-        function refreshUI() { renderLineTabs(); renderInventory(); renderOrders(); renderHistory(); renderLowStock(); drawBarChart(); drawSpendingChart(); updateStats(); updateMiniCards(); updateTonerSuggest(); applyDeviceMode(); }
+        function refreshUI() {
+            renderLineTabs(); renderInventory(); renderOrders(); renderHistory(); renderLowStock();
+            drawBarChart(); drawSpendingChart(); updateStats(); updateMiniCards(); updateTonerSuggest(); updateSuggestions(); applyDeviceMode();
+            const anyLow = Object.values(inventory).some(t => t.stock < t.minLevel);
+            document.getElementById('lowStockBanner').style.display = anyLow ? 'flex' : 'none';
+        }
 
         function renderLineTabs() {
             const container = document.getElementById('lineTabs'); if(!container) return;
@@ -209,7 +226,7 @@
             const container = document.getElementById('ordersList'); container.innerHTML = '';
             filtered.forEach(ord => {
                 const card = document.createElement('div'); card.style.background='var(--surface)'; card.style.padding='16px'; card.style.marginBottom='12px'; card.style.borderRadius='12px';
-                card.innerHTML = `<strong>${ord.supplier}</strong> (${ord.status})<br>Expected: ${ord.expectedDelivery}`;
+                card.innerHTML = `<strong>${ord.supplier}</strong> (${ord.status})<br>Expected: ${ord.expectedDelivery}<br>Items: ${ord.items?.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')||''}`;
                 container.appendChild(card);
             });
         }
@@ -278,6 +295,68 @@
             data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.spent/max)*140; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,180-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 12px Inter'; ctx.textAlign='center'; ctx.fillText('$'+d.spent.toFixed(0),x+barWidth/2,178-barH-6); ctx.fillStyle='#9ba5b0'; ctx.font='11px Inter'; ctx.fillText(d.line,x+barWidth/2,195); });
         }
         window.addEventListener('resize',()=>{ drawBarChart(); drawSpendingChart(); });
+
+        // ──────────────────────────────────────
+        // SELF‑LEARNING SUGGESTIONS
+        // ──────────────────────────────────────
+        function updateSuggestions() {
+            const container = document.getElementById('suggestionsWidget');
+            const suggestions = [];
+            const lowToners = Object.values(inventory).filter(t => t.stock < t.minLevel);
+            if (lowToners.length > 0) {
+                const bySupplier = {};
+                lowToners.forEach(t => { const s = t.supplier || 'Unknown'; if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); });
+                Object.entries(bySupplier).forEach(([supplier, toners]) => {
+                    suggestions.push(`💡 <strong>Reorder from ${supplier}:</strong> ${toners.map(t=>t.code).join(', ')} (${toners.length} toners low)`);
+                });
+            }
+            Object.values(inventory).forEach(t => {
+                if (t.stock > t.minLevel * 3 && t.stock > 10) {
+                    suggestions.push(`⚠️ <strong>${t.code}:</strong> Overstocked (${t.stock} vs min ${t.minLevel}). Consider reducing.`);
+                }
+                const recentIn = history.filter(h => h.tonerCode === t.code && h.type === 'in');
+                if (recentIn.length >= 2) {
+                    const cheapest = recentIn.reduce((min, curr) => (curr.costPerUnit||999) < (min.costPerUnit||999) ? curr : min, recentIn[0]);
+                    if (cheapest.costPerUnit < (t.cost||0) * 0.9) {
+                        suggestions.push(`💰 <strong>${t.code}:</strong> Last bought at $${t.cost.toFixed(2)} from ${t.supplier}, but ${cheapest.customerOrSupplier} offered $${cheapest.costPerUnit.toFixed(2)}.`);
+                    }
+                }
+            });
+            container.innerHTML = suggestions.slice(0,5).map(s => `<div class="suggestion-card">${s}</div>`).join('');
+        }
+
+        // ──────────────────────────────────────
+        // LOW‑STOCK POP‑UP WITH SOUND
+        // ──────────────────────────────────────
+        const playAlertChime = () => { try { const ctx = new (window.AudioContext||window.webkitAudioContext)(); [660,880].forEach((f,i)=>{const o=ctx.createOscillator();const g=ctx.createGain();o.type='sine';o.frequency.value=f;g.gain.value=0.15;o.connect(g);g.connect(ctx.destination);o.start(ctx.currentTime+i*0.15);o.stop(ctx.currentTime+i*0.15+0.15);}); setTimeout(()=>ctx.close(),400); } catch(e) {} };
+        function showNotification(title, message, type='info') {
+            const container = document.getElementById('notificationContainer');
+            const popup = document.createElement('div'); popup.className = 'notification-popup';
+            popup.innerHTML = `<h4>${type==='low'?'⚠️':type==='out'?'✅':'💡'} ${title}</h4><p>${message}</p><button class="btn btn-primary" onclick="this.parentElement.remove()">OK</button>`;
+            container.appendChild(popup);
+            if (type === 'low') playAlertChime();
+        }
+
+        // ──────────────────────────────────────
+        // REORDER LOW‑STOCK BY SUPPLIER
+        // ──────────────────────────────────────
+        window.reorderLowStock = () => {
+            const low = Object.values(inventory).filter(t => t.stock < t.minLevel);
+            if (low.length === 0) { showToast('No low-stock toners.','error'); return; }
+            const bySupplier = {};
+            low.forEach(t => { const s = t.supplier || 'Unknown'; if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); });
+            const firstSupplier = Object.keys(bySupplier)[0];
+            document.getElementById('createOrderModal').style.display='flex';
+            populateSupplierSelect('orderSupplier', firstSupplier);
+            document.getElementById('orderDelivery').value = '';
+            document.getElementById('orderNotes').value = 'Low-stock reorder';
+            const container = document.getElementById('orderItems'); container.innerHTML = '';
+            bySupplier[firstSupplier].forEach(t => {
+                const div = document.createElement('div'); div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px';
+                div.innerHTML = `<input type="text" value="${t.code}" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="number" value="${Math.max(t.minLevel*2-t.stock,1)}" min="1" style="width:80px;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>`;
+                container.appendChild(div);
+            });
+        };
 
         function updateTonerSuggest() {
             const datalist = document.getElementById('tonerSuggest'); datalist.innerHTML = '';
@@ -361,6 +440,7 @@
             const t=doc.data(); if(t.stock<qty){ showToast(`Only ${t.stock} available`,'error'); return; }
             await ref.update({stock:t.stock-qty,lastUpdated:document.getElementById('outDate').value});
             await db.collection('history').add({date:document.getElementById('outDate').value,type:'out',tonerCode:code,quantity:qty,customerOrSupplier:document.getElementById('outCustomer').value.trim()||'Walk-in',line:t.line,costPerUnit:t.cost||0,timestamp:Date.now()});
+            showNotification('Outgoing',`${qty} ${code} shipped. ${t.stock-qty} left.`,'out');
             showToast(`📤 ${code} shipped`,'success'); document.getElementById('outCode').value=''; document.getElementById('outQty').value='1'; document.getElementById('outCode').focus();
         };
 
@@ -368,16 +448,44 @@
             e.preventDefault(); const supplier=document.getElementById('orderSupplier').value, delivery=document.getElementById('orderDelivery').value, notes=document.getElementById('orderNotes').value;
             if(!supplier||!delivery){ showToast('Supplier and date required','error'); return; }
             const items=[], divs=document.querySelectorAll('#orderItems > div');
-            divs.forEach(d=>{ const ins=d.querySelectorAll('input'); const code=ins[0].value.trim().toUpperCase(), qty=parseInt(ins[1].value)||0; if(code&&qty>0) items.push({tonerCode:code,quantityOrdered:qty,quantityReceived:0}); });
+            divs.forEach(d=>{ const ins=d.querySelectorAll('input'); const code=ins[0].value.trim().toUpperCase(), qty=parseInt(ins[1].value)||0; if(code&&qty>0) items.push({tonerCode:code,quantityOrdered:qty,quantityReceived:0,color:inventory[code]?.color||'N/A',line:inventory[code]?.line||lines[0]}); });
             if(items.length===0){ showToast('Add at least one item','error'); return; }
             const supplierData = suppliers.find(s=>s.name===supplier);
-            await db.collection('orders').add({supplier,supplierEmail:supplierData?.email||'',orderDate:todayISO(),expectedDelivery:delivery,status:'pending',items,notes,createdAt:Date.now()});
-            closeCreateOrderModal(); showToast('Order created!','success');
+            let estCost = 0; items.forEach(i=>{ const t=inventory[i.tonerCode]; if(t?.cost) estCost += t.cost * i.quantityOrdered; });
+            await db.collection('orders').add({supplier,supplierEmail:supplierData?.email||'',orderDate:todayISO(),expectedDelivery:delivery,status:'pending',items,notes,estimatedCost:estCost,createdAt:Date.now()});
+            closeCreateOrderModal(); showToast(`Order created! Est. cost: $${estCost.toFixed(2)}`,'success');
         };
 
+        // ──────────────────────────────────────
+        // BI‑WEEKLY REPORT (manual trigger)
+        // ──────────────────────────────────────
+        window.sendBiweeklyReport = async () => {
+            const reportHTML = generateReportHTML();
+            const blob = new Blob([reportHTML], {type:'text/html'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `TonerTrack_Report_${todayISO()}.html`; a.click();
+            showToast('📧 Report downloaded. Email it manually for now.','success');
+        };
+
+        function generateReportHTML() {
+            const toners = Object.values(inventory).sort((a,b)=>(a.line||'').localeCompare(b.line||'')||a.code.localeCompare(b.code));
+            const low = toners.filter(t=>t.stock<t.minLevel);
+            const pending = ordersList.filter(o=>o.status==='pending'||o.status==='partial');
+            let html = `<html><body style="font-family:Inter,Arial,sans-serif;max-width:800px;margin:auto;"><h2 style="color:#f68523;">TonerTrack Bi‑Weekly Report</h2><p>Date: ${new Date().toLocaleDateString()}</p>`;
+            html += `<h3>All Toners</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr style="background:#f5f5f5;"><th>Line</th><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Cost</th><th>Status</th></tr>`;
+            toners.forEach(t=>{ html += `<tr><td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.stock<t.minLevel?'⚠ Low':'OK'}</td></tr>`; });
+            html += `</table>`;
+            if(low.length>0){ html += `<h3 style="color:#e74c3c;">Low Stock</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>Line</th><th>Code</th><th>Stock</th><th>Min</th><th>Deficit</th></tr>`; low.forEach(t=>html+=`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${t.minLevel-t.stock}</td></tr>`); html+=`</table>`; }
+            if(pending.length>0){ html += `<h3>Pending Orders</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>Supplier</th><th>Expected</th><th>Items</th><th>Status</th></tr>`; pending.forEach(o=>html+=`<tr><td>${o.supplier}</td><td>${o.expectedDelivery}</td><td>${o.items.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')}</td><td>${o.status}</td></tr>`); html+=`</table>`; }
+            html += `<h3>Supplier Purchase Reports</h3>`;
+            const bySupplier = {}; low.forEach(t=>{ const s=t.supplier||'Unknown'; if(!bySupplier[s]) bySupplier[s]=[]; bySupplier[s].push(t); });
+            Object.entries(bySupplier).forEach(([supplier,toners])=>{ html+=`<h4>${supplier}</h4><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Suggested Reorder</th></tr>`; toners.forEach(t=>html+=`<tr><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${Math.max(t.minLevel*2-t.stock,1)}</td></tr>`); html+=`</table>`; });
+            html += `</body></html>`;
+            return html;
+        }
+
         window.exportCSV = () => { const inv=Object.values(inventory); const h=['Line','Code','Color','Stock','Min','Cost']; const r=inv.map(t=>[t.line||'',t.code,t.color,t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`inventory_${todayISO()}.csv`; a.click(); };
-        window.printReport = () => { const inv=Object.values(inventory); const low=inv.filter(t=>t.stock<t.minLevel); const w=window.open('','_blank'); w.document.write(`<html><head><title>Report</title></head><body><h1>TonerTrack Report ${todayISO()}</h1><table border="1"><tr><th>Line</th><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Cost</th></tr>${inv.map(t=>`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td></tr>`).join('')}</table>${low.length?`<h2>Low Stock</h2><table border="1"><tr><th>Line</th><th>Code</th><th>Stock</th><th>Min</th></tr>${low.map(t=>`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td></tr>`).join('')}</table>`:''}</body></html>`); w.document.close(); };
-        window.exportData = () => { const data={inventory,history,lines,suppliers,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`backup_${todayISO()}.json`; a.click(); };
+        window.printReport = () => { const html = generateReportHTML(); const w=window.open('','_blank'); w.document.write(html); w.document.close(); };
+        window.exportData = () => { const data={inventory,history,lines,suppliers,ordersList,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`backup_${todayISO()}.json`; a.click(); };
         window.importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(data.inventory){ const batch=db.batch(); const ids=await db.collection('inventory').get(); ids.forEach(d=>batch.delete(d.ref)); Object.entries(data.inventory).forEach(([k,v])=>batch.set(db.collection('inventory').doc(k),v)); await batch.commit(); if(data.lines&&data.suppliers) await db.collection('settings').doc('config').set({lines:data.lines,suppliers:data.suppliers}); showToast('📂 Restored!','success'); } } catch{ showToast('Error','error'); } }; r.readAsText(f); e.target.value=''; };
 
         ['receiveModal','outgoingModal','settingsModal','createOrderModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
