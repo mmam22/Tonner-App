@@ -502,8 +502,7 @@
 
         const todayISO = () => new Date().toISOString().slice(0,10);
         const showToast = (msg,type='success')=>{ const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),2200); };
-
-        window.quickOutgoing = (code) => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=code; document.getElementById('outDate').value=todayISO(); resolveOutBarcode(); };
+        window.quickOutgoing = (code) => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=inventory[code]?.barcode||code; document.getElementById('outTonerNumber').value=code; document.getElementById('outDate').value=todayISO(); document.getElementById('outLineDisplay').value=inventory[code]?.line||''; };
         window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
         window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
         window.openOutgoingModal = () => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outDate').value=todayISO(); };
