@@ -42,6 +42,18 @@
         .stat-card:active { transform:scale(0.97); background:var(--surface2); }
         .stat-card .label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); margin-bottom:8px; }
         .stat-card .value { font-size:2rem; font-weight:700; }
+        .chart-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+        .chart-container { flex:1; min-width:300px; background:var(--surface); border-radius:var(--radius); padding:20px; border:1px solid var(--border); box-shadow:var(--shadow); backdrop-filter:blur(8px); }
+        .chart-container h4 { font-size:0.9rem; text-transform:uppercase; letter-spacing:0.6px; color:var(--text2); margin-bottom:16px; font-weight:700; }
+        canvas { display:block; width:100%; height:auto; max-height:200px; }
+        .paint-line-mini-cards { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+        .mini-card { background:var(--surface); border-radius:var(--radius); padding:14px 18px; border:1px solid var(--border); box-shadow:var(--shadow); cursor:pointer; transition:all var(--transition); min-width:120px; }
+        .mini-card:hover { background:var(--surface2); border-color:var(--accent); }
+        .mini-card .line-name { font-weight:700; font-size:0.9rem; color:var(--accent); margin-bottom:6px; }
+        .mini-card .line-stats { font-size:0.8rem; color:var(--text2); }
+        .tabs { display:flex; gap:4px; margin-bottom:16px; background:var(--surface); border-radius:var(--radius); padding:4px; border:1px solid var(--border); overflow-x:auto; }
+        .tab { flex:1; min-width:70px; text-align:center; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all var(--transition); white-space:nowrap; color:var(--text2); background:transparent; border:none; }
+        .tab.active { background:var(--accent); color:#000; box-shadow:0 4px 12px rgba(246,133,35,0.3); }
         .line-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
         .line-tab { background:var(--surface2); border:1px solid var(--border); padding:10px 18px; border-radius:30px; font-weight:600; font-size:0.82rem; cursor:pointer; transition:all var(--transition); color:var(--text2); user-select:none; }
         .line-tab.active { background:var(--accent); color:#000; border-color:var(--accent); box-shadow:0 4px 12px rgba(246,133,35,0.25); }
@@ -82,6 +94,7 @@
             <button class="btn btn-primary" id="btnReceive" onclick="openReceiveModal()">📥 Receive</button>
             <button class="btn btn-outline" id="btnOutgoing" onclick="openOutgoingModal()">📤 Outgoing</button>
             <button class="btn btn-sm btn-outline" onclick="exportCSV()">📊 CSV</button>
+            <button class="btn btn-sm btn-outline" onclick="printReport()">🖨️ Report</button>
             <button class="btn btn-sm btn-outline" onclick="exportData()">💾 Backup</button>
             <button class="btn btn-sm btn-outline" onclick="document.getElementById('importFile').click()">📂 Restore</button>
             <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
@@ -90,17 +103,45 @@
     </header>
     <div class="container">
         <div class="stat-row" id="statRow"></div>
-        <div class="line-tabs" id="lineTabs"></div>
-        <div class="search-bar" style="display:flex;gap:8px;margin-bottom:16px;">
-            <input type="text" id="searchInventory" placeholder="🔍 Search..." oninput="renderInventory()" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
-            <button class="btn btn-sm btn-outline" onclick="document.getElementById('searchInventory').value='';renderInventory();">Clear</button>
+        <div class="paint-line-mini-cards" id="miniCardsRow"></div>
+        <div class="chart-row">
+            <div class="chart-container"><h4>📊 Stock by Paint Line</h4><canvas id="barChart" height="200"></canvas></div>
+            <div class="chart-container"><h4>💰 Spending Last 4 Weeks</h4><canvas id="spendingChart" height="200"></canvas></div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Line</th><th>Toner Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Avg Cost</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody id="inventoryBody"></tbody></table><div class="empty-state" id="inventoryEmpty" style="display:none;">📭 No toners found.</div></div>
+        <div class="tabs" id="mainTabs">
+            <button class="tab active" data-tab="inventory">📋 Inventory</button>
+            <button class="tab" data-tab="orders">📦 Orders</button>
+            <button class="tab" data-tab="history">📜 History</button>
+            <button class="tab" data-tab="lowstock">⚠️ Low Stock</button>
+        </div>
+        <div class="panel active" id="panel-inventory">
+            <div class="line-tabs" id="lineTabs"></div>
+            <div class="search-bar" style="display:flex;gap:8px;margin-bottom:16px;">
+                <input type="text" id="searchInventory" placeholder="🔍 Search..." oninput="renderInventory()" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('searchInventory').value='';renderInventory();">Clear</button>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Line</th><th>Toner Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Avg Cost</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody id="inventoryBody"></tbody></table><div class="empty-state" id="inventoryEmpty" style="display:none;">📭 No toners found.</div></div>
+        </div>
+        <div class="panel" id="panel-orders">
+            <button class="btn btn-primary" onclick="openCreateOrderModal()">+ New Order</button>
+            <select id="orderFilter" onchange="renderOrders()" style="padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);margin-left:10px;"><option value="pending">Pending</option><option value="partial">Partial</option><option value="complete">Complete</option><option value="all">All</option></select>
+            <div id="ordersList" style="margin-top:16px;"></div>
+        </div>
+        <div class="panel" id="panel-history">
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <input type="text" id="searchHistory" placeholder="🔍 Search..." oninput="renderHistory()" style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text);">
+                <select id="filterType" onchange="renderHistory()" style="padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><option value="all">All</option><option value="in">📥 In</option><option value="out">📤 Out</option></select>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Line</th><th>Code</th><th>Qty</th><th>Cost/Unit</th><th>Customer/Supplier</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+        </div>
+        <div class="panel" id="panel-lowstock">
+            <div class="table-wrap"><table><thead><tr><th>Line</th><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Avg Cost</th><th>Deficit</th></tr></thead><tbody id="lowStockBody"></tbody></table></div>
+        </div>
     </div>
-
-    <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>📥 Receive Toner</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="recDate" required></div><div class="form-group"><label>Toner Code *</label><input type="text" id="recCode" required></div></div><div class="form-row"><div class="form-group"><label>Paint Line *</label><select id="recLine" required></select></div><div class="form-group"><label>Color / Name</label><input type="text" id="recColor"></div></div><div class="form-row"><div class="form-group"><label>Quantity *</label><input type="number" id="recQty" value="1" min="1"></div><div class="form-group"><label>Unit Cost ($)</label><input type="number" id="recCost" step="0.01" min="0" placeholder="e.g. 12.50"></div></div><div class="form-row"><div class="form-group"><label>Supplier</label><input type="text" id="recSupplier"></div><div class="form-group"><label>Min Level</label><input type="number" id="recMin" value="3" min="0"></div></div><div class="form-group"><label>Notes</label><input type="text" id="recNotes"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">Done</button><button type="submit" class="btn btn-green">✅ Confirm</button></div></form></div></div>
-    <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>📤 Toner Outgoing</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="outDate" required></div><div class="form-group"><label>Toner Code *</label><input type="text" id="outCode" required list="tonerSuggest"></div></div><div class="form-row"><div class="form-group"><label>Paint Line (auto)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div><div class="form-group"><label>Quantity *</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>Customer</label><input type="text" id="outCustomer"></div><div class="form-group"><label>Notes</label><input type="text" id="outNotes"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.82rem;margin-bottom:10px;display:none;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">Done</button><button type="submit" class="btn btn-primary">✅ Confirm</button></div></form></div></div>
-    <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3>⚙️ Settings</h3><h4>Paint Lines</h4><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:8px;">+ Add Line</button><h4 style="margin-top:24px;">Suppliers</h4><div id="supplierList"></div><button class="btn btn-sm btn-outline" id="addSupplierBtn" style="margin-top:8px;">+ Add Supplier</button><div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button><button class="btn btn-green" onclick="saveAllSettings()">💾 Save All</button></div></div></div>
+    <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>📥 Receive Toner</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="recDate" required></div><div class="form-group"><label>Toner Code *</label><input type="text" id="recCode" required></div></div><div class="form-row"><div class="form-group"><label>Paint Line *</label><select id="recLine" required></select></div><div class="form-group"><label>Color</label><input type="text" id="recColor"></div></div><div class="form-row"><div class="form-group"><label>Quantity *</label><input type="number" id="recQty" value="1" min="1"></div><div class="form-group"><label>Unit Cost ($)</label><input type="number" id="recCost" step="0.01" min="0"></div></div><div class="form-row"><div class="form-group"><label>Supplier</label><input type="text" id="recSupplier"></div><div class="form-group"><label>Min Level</label><input type="number" id="recMin" value="3" min="0"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">Done</button><button type="submit" class="btn btn-green">✅ Confirm</button></div></form></div></div>
+    <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>📤 Toner Outgoing</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="outDate" required></div><div class="form-group"><label>Toner Code *</label><input type="text" id="outCode" required list="tonerSuggest"></div></div><div class="form-row"><div class="form-group"><label>Quantity *</label><input type="number" id="outQty" value="1" min="1"></div><div class="form-group"><label>Customer</label><input type="text" id="outCustomer"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">Done</button><button type="submit" class="btn btn-primary">✅ Confirm</button></div></form></div></div>
+    <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3>⚙️ Settings</h3><h4>Paint Lines</h4><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:8px;">+ Add Line</button><h4 style="margin-top:24px;">Suppliers</h4><div id="supplierList"></div><button class="btn btn-sm btn-outline" id="addSupplierBtn" style="margin-top:8px;">+ Add Supplier</button><h4 style="margin-top:24px;">Device Mode</h4><select id="deviceMode" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><option value="full">Full</option><option value="receive">Receive Only</option><option value="outgoing">Outgoing Only</option></select><div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">Cancel</button><button class="btn btn-green" onclick="saveAllSettings()">💾 Save All</button></div></div></div>
+    <div class="modal-overlay" id="createOrderModal" style="display:none;"><div class="modal"><h3>📦 New Order</h3><form onsubmit="createOrder(event)"><div class="form-row"><div class="form-group"><label>Supplier</label><select id="orderSupplier" required></select></div><div class="form-group"><label>Expected Delivery</label><input type="date" id="orderDelivery" required></div></div><div class="form-group"><label>Notes / PO</label><input type="text" id="orderNotes"><h4>Items</h4><div id="orderItems"></div><button type="button" class="btn btn-sm btn-outline" onclick="addOrderItem()">+ Add Item</button></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeCreateOrderModal()">Cancel</button><button type="submit" class="btn btn-green">✅ Create</button></div></form></div></div>
     <div class="toast-container" id="toastContainer"></div>
     <datalist id="tonerSuggest"></datalist>
 
@@ -115,219 +156,235 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-
         const DEFAULT_LINES = ['Line 1', 'Line 2', 'Line 3'];
-        let inventory = {};
-        let lines = [...DEFAULT_LINES];
-        let suppliers = [];
+        let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], editingCell = null;
+        let deviceMode = localStorage.getItem('tonerMode') || 'full';
         let currentLineFilter = '__ALL__';
 
-        db.collection('inventory').onSnapshot(snapshot => {
-            const newInv = {};
-            snapshot.forEach(doc => { newInv[doc.id] = doc.data(); });
-            inventory = newInv;
-            renderAll();
-        });
-        db.collection('settings').doc('config').onSnapshot(doc => {
-            if (doc.exists) {
-                const data = doc.data();
-                if (data.lines) lines = data.lines;
-                if (data.suppliers) suppliers = data.suppliers;
-            } else {
-                db.collection('settings').doc('config').set({ lines: DEFAULT_LINES, suppliers: [] });
-                lines = [...DEFAULT_LINES]; suppliers = [];
-            }
-            renderAll();
-        });
+        db.collection('inventory').onSnapshot(s => { const n = {}; s.forEach(d => n[d.id] = d.data()); inventory = n; if(!editingCell) refreshUI(); });
+        db.collection('history').orderBy('timestamp','desc').onSnapshot(s => { history = []; s.forEach(d => history.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
+        db.collection('orders').orderBy('createdAt','desc').onSnapshot(s => { ordersList = []; s.forEach(d => ordersList.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
+        db.collection('settings').doc('config').onSnapshot(d => { if(d.exists){ const data = d.data(); if(data.lines) lines = data.lines; if(data.suppliers) suppliers = data.suppliers; } else { db.collection('settings').doc('config').set({lines:DEFAULT_LINES,suppliers:[]}); lines=[...DEFAULT_LINES]; suppliers=[]; } if(!editingCell) refreshUI(); });
 
-        function renderAll() {
-            renderLineTabs();
-            renderInventory();
-            updateStats();
-            updateTonerSuggest();
-        }
+        function refreshUI() { renderLineTabs(); renderInventory(); renderOrders(); renderHistory(); renderLowStock(); drawBarChart(); drawSpendingChart(); updateStats(); updateMiniCards(); updateTonerSuggest(); applyDeviceMode(); }
 
         function renderLineTabs() {
-            const container = document.getElementById('lineTabs');
-            if (!container) return;
+            const container = document.getElementById('lineTabs'); if(!container) return;
             container.innerHTML = '';
             const allBtn = document.createElement('span');
-            allBtn.className = 'line-tab' + (currentLineFilter === '__ALL__' ? ' active' : '');
+            allBtn.className = 'line-tab' + (currentLineFilter==='__ALL__'?' active':'');
             allBtn.textContent = 'All'; allBtn.style.cursor = 'pointer';
-            allBtn.onclick = function() { currentLineFilter = '__ALL__'; renderLineTabs(); renderInventory(); };
+            allBtn.onclick = function(){ currentLineFilter = '__ALL__'; renderLineTabs(); renderInventory(); };
             container.appendChild(allBtn);
-            lines.forEach(function(line) {
+            lines.forEach(function(line){
                 const btn = document.createElement('span');
-                btn.className = 'line-tab' + (currentLineFilter === line ? ' active' : '');
+                btn.className = 'line-tab' + (currentLineFilter===line?' active':'');
                 btn.textContent = line; btn.style.cursor = 'pointer';
-                btn.onclick = function() { currentLineFilter = line; renderLineTabs(); renderInventory(); };
+                btn.onclick = function(){ currentLineFilter = line; renderLineTabs(); renderInventory(); };
                 container.appendChild(btn);
             });
         }
 
         function renderInventory() {
+            if(editingCell) return;
             const search = (document.getElementById('searchInventory')?.value||'').toLowerCase();
             let filtered = Object.values(inventory).filter(t => (currentLineFilter==='__ALL__'||t.line===currentLineFilter));
-            if (search) filtered = filtered.filter(t => t.code.toLowerCase().includes(search)||(t.color||'').toLowerCase().includes(search));
-            const tbody = document.getElementById('inventoryBody');
-            tbody.innerHTML = '';
+            if(search) filtered = filtered.filter(t => t.code.toLowerCase().includes(search)||(t.color||'').toLowerCase().includes(search));
+            const tbody = document.getElementById('inventoryBody'); tbody.innerHTML = '';
             document.getElementById('inventoryEmpty').style.display = filtered.length?'none':'block';
             filtered.forEach(t => {
                 const isLow = t.stock < t.minLevel;
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${t.line||'?'}</td><td><strong>${t.code}</strong></td><td>${t.color}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${isLow?'<span class="badge badge-low">⚠ Low</span>':'<span class="badge badge-in">OK</span>'}</td><td>${t.lastUpdated||''}</td><td><button class="btn btn-sm btn-outline" onclick="quickOutgoing('${t.code}')">📤</button></td>`;
+                tr.innerHTML = `<td>${t.line||'?'}</td><td><strong>${t.code}</strong></td><td>${t.color}</td><td style="font-weight:700;"><span class="editable-stock" onclick="startInlineEdit(this,'${t.code}','stock')">${t.stock}</span></td><td><span class="editable-min" onclick="startInlineEdit(this,'${t.code}','min')">${t.minLevel}</span></td><td>$${(t.cost||0).toFixed(2)}</td><td>${isLow?'<span class="badge badge-low">⚠ Low</span>':'<span class="badge badge-in">OK</span>'}</td><td>${t.lastUpdated||''}</td><td><button class="btn btn-sm btn-outline" onclick="quickOutgoing('${t.code}')">📤</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderOrders() {
+            const filter = document.getElementById('orderFilter')?.value||'pending';
+            let filtered = ordersList;
+            if(filter==='pending') filtered = ordersList.filter(o=>o.status==='pending');
+            else if(filter==='partial') filtered = ordersList.filter(o=>o.status==='partial');
+            else if(filter==='complete') filtered = ordersList.filter(o=>o.status==='complete');
+            const container = document.getElementById('ordersList'); container.innerHTML = '';
+            filtered.forEach(ord => {
+                const card = document.createElement('div'); card.style.background='var(--surface)'; card.style.padding='16px'; card.style.marginBottom='12px'; card.style.borderRadius='12px';
+                card.innerHTML = `<strong>${ord.supplier}</strong> (${ord.status})<br>Expected: ${ord.expectedDelivery}`;
+                container.appendChild(card);
+            });
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('historyBody'); tbody.innerHTML = '';
+            history.slice(0,50).forEach(h => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${h.date}</td><td>${h.type}</td><td>${h.line||''}</td><td>${h.tonerCode}</td><td>${h.quantity}</td><td>$${(h.costPerUnit||0).toFixed(2)}</td><td>${h.customerOrSupplier||''}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderLowStock() {
+            const low = Object.values(inventory).filter(t=>t.stock<t.minLevel);
+            const tbody = document.getElementById('lowStockBody'); tbody.innerHTML = '';
+            low.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.minLevel-t.stock}</td>`;
                 tbody.appendChild(tr);
             });
         }
 
         function updateStats() {
             const filtered = currentLineFilter==='__ALL__'?Object.values(inventory):Object.values(inventory).filter(t=>t.line===currentLineFilter);
-            const unique = filtered.length;
-            const total = filtered.reduce((s,t)=>s+t.stock,0);
-            const low = filtered.filter(t=>t.stock<t.minLevel).length;
+            const unique = filtered.length, total = filtered.reduce((s,t)=>s+t.stock,0), low = filtered.filter(t=>t.stock<t.minLevel).length;
             const totalValue = filtered.reduce((s,t)=>s+(t.stock*(t.cost||0)),0);
-            document.getElementById('statRow').innerHTML = `
-                <div class="stat-card"><div class="label">📦 Unique</div><div class="value blue">${unique}</div></div>
-                <div class="stat-card"><div class="label">📋 Total Units</div><div class="value green">${total}</div></div>
-                <div class="stat-card"><div class="label">💰 Total Value</div><div class="value" style="color:#2d9cdb;">$${totalValue.toFixed(0)}</div></div>
-                <div class="stat-card"><div class="label">⚠️ Low Stock</div><div class="value red">${low}</div></div>`;
+            document.getElementById('statRow').innerHTML = `<div class="stat-card"><div class="label">📦 Unique</div><div class="value blue">${unique}</div></div><div class="stat-card"><div class="label">📋 Total Units</div><div class="value green">${total}</div></div><div class="stat-card"><div class="label">💰 Total Value</div><div class="value" style="color:#2d9cdb;">$${totalValue.toFixed(0)}</div></div><div class="stat-card"><div class="label">⚠️ Low Stock</div><div class="value red">${low}</div></div>`;
         }
 
-        function updateTonerSuggest() {
-            const datalist = document.getElementById('tonerSuggest');
-            datalist.innerHTML = '';
-            Object.values(inventory).forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t.code;
-                datalist.appendChild(opt);
+        function updateMiniCards() {
+            const container = document.getElementById('miniCardsRow'); container.innerHTML = '';
+            const totalValue = Object.values(inventory).reduce((s,t)=>s+(t.stock*(t.cost||0)),0);
+            const totalCard = document.createElement('div'); totalCard.className='mini-card';
+            totalCard.innerHTML = `<div class="line-name">Total Stock Value</div><div class="line-stats">$${totalValue.toFixed(2)}</div>`; container.appendChild(totalCard);
+            lines.forEach(line => {
+                const lineToners = Object.values(inventory).filter(t=>t.line===line);
+                const units = lineToners.reduce((s,t)=>s+t.stock,0), value = lineToners.reduce((s,t)=>s+(t.stock*(t.cost||0)),0);
+                const card = document.createElement('div'); card.className='mini-card';
+                card.onclick = function(){ currentLineFilter = line; renderLineTabs(); renderInventory(); };
+                card.innerHTML = `<div class="line-name">${line}</div><div class="line-stats">${units} units | $${value.toFixed(2)}</div>`; container.appendChild(card);
             });
         }
 
-        const todayISO = () => new Date().toISOString().slice(0,10);
-        const showToast = (msg, type='success') => {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div'); toast.className = `toast ${type}`; toast.textContent = msg;
-            container.appendChild(toast); setTimeout(() => toast.remove(), 2700);
+        function drawBarChart() {
+            const canvas = document.getElementById('barChart'); if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const data = lines.map(line => ({line, stock: Object.values(inventory).filter(t=>t.line===line).reduce((s,t)=>s+t.stock,0)}));
+            const max = Math.max(...data.map(d=>d.stock),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=200;
+            ctx.clearRect(0,0,w,200); const barWidth = (w-(data.length+1)*20)/data.length;
+            const gradient = ctx.createLinearGradient(0,0,0,200); gradient.addColorStop(0,'#f68523'); gradient.addColorStop(1,'#e0741a');
+            data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.stock/max)*140; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,180-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 12px Inter'; ctx.textAlign='center'; ctx.fillText(d.stock,x+barWidth/2,178-barH-6); ctx.fillStyle='#9ba5b0'; ctx.font='11px Inter'; ctx.fillText(d.line,x+barWidth/2,195); });
+        }
+
+        function drawSpendingChart() {
+            const canvas = document.getElementById('spendingChart'); if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const fourWeeksAgo = new Date(Date.now()-28*24*60*60*1000).toISOString().slice(0,10);
+            const recentIn = history.filter(h=>h.type==='in' && h.date>=fourWeeksAgo);
+            const spending = {}; lines.forEach(l=>spending[l]=0);
+            recentIn.forEach(h=>{ if(spending[h.line]!==undefined) spending[h.line] += (h.costPerUnit||0)*h.quantity; });
+            const data = lines.map(line=>({line,spent:spending[line]||0}));
+            const max = Math.max(...data.map(d=>d.spent),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=200;
+            ctx.clearRect(0,0,w,200); const barWidth = (w-(data.length+1)*20)/data.length;
+            const gradient = ctx.createLinearGradient(0,0,0,200); gradient.addColorStop(0,'#2d9cdb'); gradient.addColorStop(1,'#1a6fa0');
+            data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.spent/max)*140; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,180-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 12px Inter'; ctx.textAlign='center'; ctx.fillText('$'+d.spent.toFixed(0),x+barWidth/2,178-barH-6); ctx.fillStyle='#9ba5b0'; ctx.font='11px Inter'; ctx.fillText(d.line,x+barWidth/2,195); });
+        }
+        window.addEventListener('resize',()=>{ drawBarChart(); drawSpendingChart(); });
+
+        function updateTonerSuggest() {
+            const datalist = document.getElementById('tonerSuggest'); datalist.innerHTML = '';
+            Object.values(inventory).forEach(t=>{ const opt = document.createElement('option'); opt.value = t.code; datalist.appendChild(opt); });
+        }
+
+        function applyDeviceMode() {
+            const mode = localStorage.getItem('tonerMode')||'full';
+            const btnReceive = document.getElementById('btnReceive'), btnOutgoing = document.getElementById('btnOutgoing');
+            if(mode==='receive'){ btnReceive.style.display=''; btnOutgoing.style.display='none'; }
+            else if(mode==='outgoing'){ btnReceive.style.display='none'; btnOutgoing.style.display=''; }
+            else { btnReceive.style.display=''; btnOutgoing.style.display=''; }
+        }
+
+        window.startInlineEdit = function(span, code, field) {
+            if(editingCell) return; editingCell = {code,field};
+            const input = document.createElement('input'); input.type='number'; input.value=span.textContent; input.min='0';
+            input.style.width='60px'; input.style.padding='4px'; input.style.borderRadius='4px'; input.style.border='1px solid var(--accent)'; input.style.background='var(--surface2)'; input.style.color='var(--text)'; input.style.fontWeight='700';
+            span.replaceWith(input); input.focus();
+            input.addEventListener('blur',()=>saveInlineEdit(input,code,field));
+            input.addEventListener('keydown',(e)=>{ if(e.key==='Enter') input.blur(); });
         };
+        async function saveInlineEdit(input, code, field) {
+            const newValue = parseInt(input.value); if(isNaN(newValue)||newValue<0){ editingCell=null; return; }
+            const tonerRef = db.collection('inventory').doc(code);
+            try { if(field==='stock') await tonerRef.update({stock:newValue,lastUpdated:todayISO()}); else await tonerRef.update({minLevel:newValue,lastUpdated:todayISO()}); } catch(e){}
+            editingCell = null;
+        }
 
-        window.quickOutgoing = (code) => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=code; };
+        const todayISO = () => new Date().toISOString().slice(0,10);
+        const showToast = (msg,type='success')=>{ const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),2700); };
 
+        window.quickOutgoing = (code) => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outCode').value=code; document.getElementById('outDate').value=todayISO(); };
         window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
         window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
         window.openOutgoingModal = () => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outDate').value=todayISO(); };
         window.closeOutgoingModal = () => document.getElementById('outgoingModal').style.display='none';
+        window.openCreateOrderModal = () => { document.getElementById('createOrderModal').style.display='flex'; populateSupplierSelect('orderSupplier'); document.getElementById('orderItems').innerHTML=''; addOrderItem(); };
+        window.closeCreateOrderModal = () => document.getElementById('createOrderModal').style.display='none';
+        window.addOrderItem = () => { const c=document.getElementById('orderItems'); const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="Code" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="number" value="1" min="1" style="width:80px;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>'; c.appendChild(d); };
+
         window.openSettingsModal = () => {
             document.getElementById('settingsModal').style.display='flex';
-            const lineContainer = document.getElementById('lineSettingsFields'); lineContainer.innerHTML = '';
-            lines.forEach(line => { const div = document.createElement('div'); div.style.marginBottom='8px'; div.innerHTML = `<input type="text" value="${line}" style="width:100%;padding:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">`; lineContainer.appendChild(div); });
-            document.getElementById('addLineBtn').onclick = () => { const div = document.createElement('div'); div.style.marginBottom='8px'; div.innerHTML = '<input type="text" placeholder="New line name" style="width:100%;padding:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">'; lineContainer.appendChild(div); };
-            const supplierContainer = document.getElementById('supplierList'); supplierContainer.innerHTML = '';
-            suppliers.forEach(s => { const div = document.createElement('div'); div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px'; div.innerHTML = `<input type="text" value="${s.name||''}" placeholder="Name" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="email" value="${s.email||''}" placeholder="Email" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>`; supplierContainer.appendChild(div); });
-            document.getElementById('addSupplierBtn').onclick = () => { const div = document.createElement('div'); div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px'; div.innerHTML = '<input type="text" placeholder="Supplier name" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="email" placeholder="Email" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>'; supplierContainer.appendChild(div); };
+            const lc = document.getElementById('lineSettingsFields'); lc.innerHTML = '';
+            lines.forEach(l=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${l}" style="width:100%;padding:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">`; lc.appendChild(d); });
+            document.getElementById('addLineBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML='<input type="text" placeholder="New line" style="width:100%;padding:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">'; lc.appendChild(d); };
+            const sc = document.getElementById('supplierList'); sc.innerHTML = '';
+            suppliers.forEach(s=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${s.name||''}" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="email" value="${s.email||''}" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>`; sc.appendChild(d); });
+            document.getElementById('addSupplierBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="Name" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><input type="email" placeholder="Email" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑</button>'; sc.appendChild(d); };
+            document.getElementById('deviceMode').value = localStorage.getItem('tonerMode')||'full';
         };
         window.closeSettingsModal = () => document.getElementById('settingsModal').style.display='none';
         window.saveAllSettings = async () => {
-            const lineInputs = document.querySelectorAll('#lineSettingsFields input');
-            const newLines = []; lineInputs.forEach(inp => { const v = inp.value.trim(); if(v) newLines.push(v); });
-            if (newLines.length===0) { showToast('At least one line required.','error'); return; }
-            const supplierDivs = document.querySelectorAll('#supplierList > div');
-            const newSuppliers = []; supplierDivs.forEach(div => { const inputs = div.querySelectorAll('input'); const name = inputs[0].value.trim(); const email = inputs[1].value.trim(); if(name) newSuppliers.push({name,email}); });
-            await db.collection('settings').doc('config').update({ lines: newLines, suppliers: newSuppliers });
-            closeSettingsModal(); showToast('Settings saved!','success');
+            const inputs = document.querySelectorAll('#lineSettingsFields input'); const nl = []; inputs.forEach(i=>{ const v=i.value.trim(); if(v)nl.push(v); });
+            if(nl.length===0){ showToast('Need at least 1 line','error'); return; }
+            const sds = document.querySelectorAll('#supplierList > div'); const ns = []; sds.forEach(d=>{ const ins=d.querySelectorAll('input'); const name=ins[0].value.trim(), email=ins[1].value.trim(); if(name)ns.push({name,email}); });
+            const mode = document.getElementById('deviceMode').value; localStorage.setItem('tonerMode',mode);
+            await db.collection('settings').doc('config').update({lines:nl,suppliers:ns}); closeSettingsModal(); showToast('Settings saved!','success'); applyDeviceMode();
         };
 
-        function populateLineSelect(selId, selected='') {
-            const sel = document.getElementById(selId); if(!sel) return;
-            sel.innerHTML = '';
-            lines.forEach(l => { const opt = document.createElement('option'); opt.value=l; opt.textContent=l; if(l===selected) opt.selected=true; sel.appendChild(opt); });
-        }
+        function populateLineSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; lines.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l; if(l===sel)o.selected=true; s.appendChild(o); }); }
+        function populateSupplierSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; suppliers.forEach(sp=>{ const o=document.createElement('option'); o.value=sp.name; o.textContent=sp.name; if(sp.name===sel)o.selected=true; s.appendChild(o); }); }
 
         window.handleReceive = async (e) => {
-            e.preventDefault();
-            const line = document.getElementById('recLine').value;
-            const code = document.getElementById('recCode').value.trim().toUpperCase();
-            if (!line || !code) { showToast('Code and line required.','error'); return; }
-            const qty = parseInt(document.getElementById('recQty').value)||0;
-            const cost = parseFloat(document.getElementById('recCost').value)||0;
-            const supplier = document.getElementById('recSupplier').value.trim();
-            const notes = document.getElementById('recNotes').value.trim();
-            const min = parseInt(document.getElementById('recMin').value)||3;
-            const date = document.getElementById('recDate').value;
-            const tonerRef = db.collection('inventory').doc(code);
-            const doc = await tonerRef.get();
-            if (!doc.exists) {
-                await tonerRef.set({ code, color: document.getElementById('recColor').value.trim()||'N/A', stock: qty, minLevel: min, lastUpdated: date, line, supplier, cost, totalSpent: cost*qty });
-            } else {
-                const existing = doc.data();
-                const newStock = (existing.stock||0) + qty;
-                const newTotalSpent = (existing.totalSpent||0) + (cost*qty);
-                await tonerRef.update({ stock: newStock, color: document.getElementById('recColor').value.trim()||existing.color, minLevel: min>=0?min:existing.minLevel, line, supplier: supplier||existing.supplier||'', cost: newStock>0?newTotalSpent/newStock:0, totalSpent: newTotalSpent, lastUpdated: date });
-            }
-            showToast(`✅ ${code} received.`,'success');
-            document.getElementById('recCode').value=''; document.getElementById('recQty').value='1'; document.getElementById('recCost').value='';
-            document.getElementById('recCode').focus();
+            e.preventDefault(); const line=document.getElementById('recLine').value, code=document.getElementById('recCode').value.trim().toUpperCase();
+            if(!line||!code){ showToast('Code and line required','error'); return; }
+            const qty=parseInt(document.getElementById('recQty').value)||0, cost=parseFloat(document.getElementById('recCost').value)||0;
+            const supplier=document.getElementById('recSupplier').value.trim(), min=parseInt(document.getElementById('recMin').value)||3;
+            const date=document.getElementById('recDate').value, color=document.getElementById('recColor').value.trim();
+            const ref=db.collection('inventory').doc(code); const doc=await ref.get();
+            if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:min,lastUpdated:date,line,supplier,cost,totalSpent:cost*qty}); }
+            else { const ex=doc.data(); const ns=(ex.stock||0)+qty, nts=(ex.totalSpent||0)+(cost*qty); await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?nts/ns:0,totalSpent:nts,lastUpdated:date}); }
+            await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:cost,timestamp:Date.now()});
+            showToast(`✅ ${code} received`,'success'); document.getElementById('recCode').value=''; document.getElementById('recQty').value='1'; document.getElementById('recCost').value=''; document.getElementById('recCode').focus();
         };
 
         window.handleOutgoing = async (e) => {
-            e.preventDefault();
-            const code = document.getElementById('outCode').value.trim().toUpperCase();
-            const qty = parseInt(document.getElementById('outQty').value)||0;
-            const tonerRef = db.collection('inventory').doc(code);
-            const doc = await tonerRef.get();
-            if (!doc.exists) { showToast('Toner not found.','error'); return; }
-            const toner = doc.data();
-            if (toner.stock < qty) { showToast(`Only ${toner.stock} available.`,'error'); return; }
-            await tonerRef.update({ stock: toner.stock - qty, lastUpdated: document.getElementById('outDate').value });
-            showToast(`📤 ${code} shipped.`,'success');
-            document.getElementById('outCode').value=''; document.getElementById('outQty').value='1';
-            document.getElementById('outCode').focus();
+            e.preventDefault(); const code=document.getElementById('outCode').value.trim().toUpperCase(), qty=parseInt(document.getElementById('outQty').value)||0;
+            const ref=db.collection('inventory').doc(code); const doc=await ref.get();
+            if(!doc.exists){ showToast('Toner not found','error'); return; }
+            const t=doc.data(); if(t.stock<qty){ showToast(`Only ${t.stock} available`,'error'); return; }
+            await ref.update({stock:t.stock-qty,lastUpdated:document.getElementById('outDate').value});
+            await db.collection('history').add({date:document.getElementById('outDate').value,type:'out',tonerCode:code,quantity:qty,customerOrSupplier:document.getElementById('outCustomer').value.trim()||'Walk-in',line:t.line,costPerUnit:t.cost||0,timestamp:Date.now()});
+            showToast(`📤 ${code} shipped`,'success'); document.getElementById('outCode').value=''; document.getElementById('outQty').value='1'; document.getElementById('outCode').focus();
         };
 
-        window.exportCSV = () => {
-            const inv = Object.values(inventory);
-            const headers = ['Line','Code','Color','Stock','Min','Cost'];
-            const rows = inv.map(t => [t.line||'', t.code, t.color, t.stock, t.minLevel, (t.cost||0).toFixed(2)]);
-            const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-            const blob = new Blob([csv],{type:'text/csv'});
-            const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`inventory_${todayISO()}.csv`; a.click();
+        window.createOrder = async (e) => {
+            e.preventDefault(); const supplier=document.getElementById('orderSupplier').value, delivery=document.getElementById('orderDelivery').value, notes=document.getElementById('orderNotes').value;
+            if(!supplier||!delivery){ showToast('Supplier and date required','error'); return; }
+            const items=[], divs=document.querySelectorAll('#orderItems > div');
+            divs.forEach(d=>{ const ins=d.querySelectorAll('input'); const code=ins[0].value.trim().toUpperCase(), qty=parseInt(ins[1].value)||0; if(code&&qty>0) items.push({tonerCode:code,quantityOrdered:qty,quantityReceived:0}); });
+            if(items.length===0){ showToast('Add at least one item','error'); return; }
+            const supplierData = suppliers.find(s=>s.name===supplier);
+            await db.collection('orders').add({supplier,supplierEmail:supplierData?.email||'',orderDate:todayISO(),expectedDelivery:delivery,status:'pending',items,notes,createdAt:Date.now()});
+            closeCreateOrderModal(); showToast('Order created!','success');
         };
 
-        window.exportData = () => {
-            const data = { inventory, lines, suppliers, exportedAt: new Date().toISOString() };
-            const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-            const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`backup_${todayISO()}.json`; a.click();
-        };
+        window.exportCSV = () => { const inv=Object.values(inventory); const h=['Line','Code','Color','Stock','Min','Cost']; const r=inv.map(t=>[t.line||'',t.code,t.color,t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`inventory_${todayISO()}.csv`; a.click(); };
+        window.printReport = () => { const inv=Object.values(inventory); const low=inv.filter(t=>t.stock<t.minLevel); const w=window.open('','_blank'); w.document.write(`<html><head><title>Report</title></head><body><h1>TonerTrack Report ${todayISO()}</h1><table border="1"><tr><th>Line</th><th>Code</th><th>Color</th><th>Stock</th><th>Min</th><th>Cost</th></tr>${inv.map(t=>`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td></tr>`).join('')}</table>${low.length?`<h2>Low Stock</h2><table border="1"><tr><th>Line</th><th>Code</th><th>Stock</th><th>Min</th></tr>${low.map(t=>`<tr><td>${t.line}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td></tr>`).join('')}</table>`:''}</body></html>`); w.document.close(); };
+        window.exportData = () => { const data={inventory,history,lines,suppliers,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`backup_${todayISO()}.json`; a.click(); };
+        window.importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(data.inventory){ const batch=db.batch(); const ids=await db.collection('inventory').get(); ids.forEach(d=>batch.delete(d.ref)); Object.entries(data.inventory).forEach(([k,v])=>batch.set(db.collection('inventory').doc(k),v)); await batch.commit(); if(data.lines&&data.suppliers) await db.collection('settings').doc('config').set({lines:data.lines,suppliers:data.suppliers}); showToast('📂 Restored!','success'); } } catch{ showToast('Error','error'); } }; r.readAsText(f); e.target.value=''; };
 
-        window.importData = (event) => {
-            const file = event.target.files[0]; if(!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data.inventory) {
-                        const batch = db.batch();
-                        const invDocs = await db.collection('inventory').get();
-                        invDocs.forEach(doc => batch.delete(doc.ref));
-                        Object.entries(data.inventory).forEach(([code,val]) => batch.set(db.collection('inventory').doc(code),val));
-                        await batch.commit();
-                        if (data.lines && data.suppliers) {
-                            await db.collection('settings').doc('config').set({ lines: data.lines, suppliers: data.suppliers });
-                        }
-                        showToast('📂 Restored!','success');
-                    }
-                } catch { showToast('Error reading file.','error'); }
-            };
-            reader.readAsText(file); event.target.value='';
-        };
-
-        ['receiveModal','outgoingModal','settingsModal'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener('click', function(e) { if (e.target === el) el.style.display='none'; });
-        });
-
+        ['receiveModal','outgoingModal','settingsModal','createOrderModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
+        document.querySelectorAll('#mainTabs .tab').forEach(tab=>{ tab.addEventListener('click',function(){ document.querySelectorAll('#mainTabs .tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); this.classList.add('active'); document.getElementById('panel-'+this.dataset.tab).classList.add('active'); if(this.dataset.tab==='history') renderHistory(); if(this.dataset.tab==='lowstock') renderLowStock(); if(this.dataset.tab==='orders') renderOrders(); }); });
         document.getElementById('recDate').value = todayISO();
         document.getElementById('outDate').value = todayISO();
-        renderAll();
+        applyDeviceMode();
     </script>
 </body>
 </html>
