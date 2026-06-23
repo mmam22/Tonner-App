@@ -169,7 +169,7 @@
         const db = firebase.firestore();
         const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
         let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
-        let deviceMode = localStorage.getItem('tonerMode') || 'full';
+        let deviceMode = localStorage.getItem('tonerMode') || 'full';     
         let currentLineFilter = '__ALL__';
         let savingRowOrder = false;   // Prevents settings listener from overwriting during drag save
 
@@ -301,27 +301,27 @@
         }
 
         document.addEventListener('keydown', async (e) => {
-            if (!fastScanMode) return;
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-            if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
-            clearTimeout(window._scanBuffer.timer);
-            if (e.key === 'Enter') {
-                const barcode = window._scanBuffer.chars.trim().toUpperCase();
-                window._scanBuffer.chars = '';
-                if (!barcode || barcode.length < 4) return;
-                const resolved = resolveAlias(barcode);
-                const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === resolved);
-                if (!tonerEntry) { showToast(barcode + ' NOT FOUND','error'); return; }
-                const [docId, toner] = tonerEntry;
-                if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
-                bufferScan(resolved, docId, toner);   // ★ Only call – no immediate history write
-            } else if (e.key.length === 1) {
-                window._scanBuffer.chars += e.key;
-                window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
-            }
-        });
+    if (!fastScanMode) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
+    clearTimeout(window._scanBuffer.timer);
+    if (e.key === 'Enter') {
+        const barcode = window._scanBuffer.chars.trim().toUpperCase();
+        window._scanBuffer.chars = '';
+        if (!barcode || barcode.length < 4) return;
+        const resolved = resolveAlias(barcode);
+        const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === resolved);
+        if (!tonerEntry) { showToast(barcode + ' NOT FOUND','error'); return; }
+        const [docId, toner] = tonerEntry;
+        if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
+        bufferScan(resolved, docId, toner);   // ★ only this line – no history.add here
+    } else if (e.key.length === 1) {
+        window._scanBuffer.chars += e.key;
+        window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
+    }
 
-        window.quickOutgoing = (code) => {
+            
+         window.quickOutgoing = (code) => {
             const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === code);
             if (!tonerEntry) return;
             const [docId, t] = tonerEntry;
