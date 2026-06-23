@@ -151,13 +151,16 @@
     <datalist id="tonerSuggest"></datalist>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyAzMfCPalgaZx7chEghiI_-kpIzvLq61BU", authDomain: "toner-track-pro-v2.firebaseapp.com", projectId: "toner-track-pro-v2", storageBucket: "toner-track-pro-v2.firebasestorage.app", messagingSenderId: "96521492059", appId: "1:96521492059:web:c40e09b3a53294246a117e" };
+                const firebaseConfig = { apiKey: "AIzaSyAzMfCPalgaZx7chEghiI_-kpIzvLq61BU", authDomain: "toner-track-pro-v2.firebaseapp.com", projectId: "toner-track-pro-v2", storageBucket: "toner-track-pro-v2.firebasestorage.app", messagingSenderId: "96521492059", appId: "1:96521492059:web:c40e09b3a53294246a117e" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
         let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
         let deviceMode = localStorage.getItem('tonerMode') || 'full';
         let currentLineFilter = '__ALL__';
+        let fastScanMode = false;
+        let lastScannedCode = null;
+        let lastScannedTime = 0;
 
         db.collection('inventory').onSnapshot(s => { const n = {}; s.forEach(d => n[d.id] = d.data()); inventory = n; if(!editingCell) refreshUI(); });
         db.collection('history').orderBy('timestamp','desc').onSnapshot(s => { history = []; s.forEach(d => history.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
@@ -187,7 +190,6 @@
 
         function getOrderedInventory() { const all = Object.values(inventory); if (!rowOrder || rowOrder.length === 0) return all; const ordered = rowOrder.map(code => inventory[code]).filter(t => t); all.forEach(t => { if (!ordered.find(o => o.code === t.code)) ordered.push(t); }); return ordered; }
 
-        // FIX: saveRowOrder - always saves the current table order
         async function saveRowOrder() {
             const newOrder = [];
             document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => {
@@ -198,7 +200,6 @@
             rowOrder = newOrder;
             try {
                 await db.collection('settings').doc('config').update({ rowOrder: newOrder });
-                console.log('✅ Order saved:', newOrder.length, 'items');
                 showToast('✅ Order saved!', 'success');
             } catch (err) {
                 console.error('❌ Save failed:', err);
@@ -247,7 +248,6 @@
         window.receiveAllOrder = async (orderId) => { if (!confirm('RECEIVE ALL REMAINING ITEMS IN THIS ORDER?')) return; const ord = ordersList.find(o => o.id === orderId); if (!ord) return; for (const item of ord.items) { const remaining = item.quantityOrdered - item.quantityReceived; if (remaining > 0) { await receiveTonerDirect(item.tonerCode, item.color, remaining, ord.supplier, `ORDER: ${ord.notes||orderId}`, todayISO(), item.line); item.quantityReceived = item.quantityOrdered; } } await db.collection('orders').doc(orderId).update({ items: ord.items, status: 'complete', updatedAt: Date.now() }); showToast('ORDER FULLY RECEIVED!','success'); closeOrderDetail(); };
         async function receiveTonerDirect(code, color, qty, supplier, notes, date, line) { const ref = db.collection('inventory').doc(code); const doc = await ref.get(); if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:3,lastUpdated:date,line,supplier,cost:0,totalSpent:0}); } else { const ex=doc.data(); await ref.update({stock:(ex.stock||0)+qty,lastUpdated:date,line:line||ex.line,supplier:supplier||ex.supplier||''}); } await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:0,timestamp:Date.now()}); }
 
-        // ★ FIX 1: UNDO HISTORY FUNCTION
         window.undoHistory = async (historyId) => {
             if (!confirm('UNDO THIS TRANSACTION? THIS WILL REVERSE THE STOCK CHANGE AND DELETE THE RECORD.')) return;
             
@@ -264,33 +264,22 @@
             const qty = data.quantity || 0;
             const type = data.type;
             
-            // Reverse the stock change
             const ref = db.collection('inventory').doc(code);
             const doc = await ref.get();
             
             if (doc.exists) {
                 const current = doc.data().stock || 0;
                 if (type === 'in') {
-                    // Remove the received items
-                    await ref.update({ 
-                        stock: Math.max(0, current - qty),
-                        lastUpdated: todayISO()
-                    });
+                    await ref.update({ stock: Math.max(0, current - qty), lastUpdated: todayISO() });
                 } else if (type === 'out') {
-                    // Add back the shipped items
-                    await ref.update({ 
-                        stock: current + qty,
-                        lastUpdated: todayISO()
-                    });
+                    await ref.update({ stock: current + qty, lastUpdated: todayISO() });
                 }
             }
             
-            // Delete the history record
             await docRef.delete();
             showToast('Transaction undone', 'success');
         };
 
-        // ★ FIX 2: RENDER HISTORY WITH UNDO BUTTON
         function renderHistory() { 
             const search = (document.getElementById('searchHistory')?.value||'').toUpperCase(); 
             const filterType = document.getElementById('filterType')?.value||'all'; 
@@ -337,128 +326,114 @@
 
         window.quickOutgoing = (code) => { const t = inventory[code]; if (!t) return; document.getElementById('outgoingModal').style.display = 'flex'; document.getElementById('outCode').value = t.barcode || code; document.getElementById('outTonerNumber').value = t.code; document.getElementById('outDate').value = todayISO(); document.getElementById('outLineDisplay').value = t.line || ''; };
 
-        let fastScanMode = false;
-        let lastScannedCode = null;
-        let lastScannedTime = 0;
-
         window.toggleFastScan = () => { 
             fastScanMode = !fastScanMode; 
             document.getElementById('btnFastScan').style.background = fastScanMode ? 'var(--green)' : ''; 
             document.getElementById('btnFastScan').textContent = fastScanMode ? 'SCAN MODE ON' : 'FAST SCAN'; 
             showToast(fastScanMode ? 'FAST SCAN MODE ON' : 'FAST SCAN MODE OFF', 'success'); 
         };
- });
-         // ★ FIXED: FAST SCAN WITH MERGE (USES LOCAL VARIABLES)
-document.addEventListener('keydown', async (e) => {
-    if (!fastScanMode) return;
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-    
-    if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
-    clearTimeout(window._scanBuffer.timer);
-    
-    if (e.key === 'Enter') {
-        const barcode = window._scanBuffer.chars.trim().toUpperCase();
-        window._scanBuffer.chars = '';
-        if (!barcode || barcode.length < 4) return;
-        
-        const resolved = resolveAlias(barcode);
-        const toner = inventory[resolved];
-        if (!toner) { 
-            showToast(barcode + ' NOT FOUND', 'error'); 
-            return; 
-        }
-        if (toner.stock < 1) { 
-            showToast(toner.code + ' OUT OF STOCK', 'error'); 
-            return; 
-        }
-        
-        const now = Date.now();
-        
-        // ★★★ MERGE CHECK: Uses local variables (INSTANT, no Firestore delay) ★★★
-        if (lastScannedCode === resolved && (now - lastScannedTime) < 5000) {
-            // ✅ MERGE: Same toner scanned within 5 seconds - UPDATE existing record
+
+        // ★ FIXED: FAST SCAN WITH MERGE (USES LOCAL VARIABLES)
+        document.addEventListener('keydown', async (e) => {
+            if (!fastScanMode) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
             
-            // Find the most recent FAST SCAN record for this toner
-            const existingHistory = history.find(h => 
-                h.tonerCode === resolved && 
-                h.type === 'out' && 
-                h.customerOrSupplier === 'FAST SCAN'
-            );
+            if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
+            clearTimeout(window._scanBuffer.timer);
             
-            if (existingHistory) {
-                // Update the existing record
-                const newQty = existingHistory.quantity + 1;
-                await db.collection('history').doc(existingHistory.id).update({
-                    quantity: newQty,
-                    timestamp: now
-                });
-                await db.collection('inventory').doc(resolved).update({
-                    stock: toner.stock - 1,
-                    lastUpdated: todayISO()
-                });
-                playAlertChime();
-                showNotification('FAST SCAN', `${newQty} ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
-                console.log(`✅ MERGED: ${resolved} now has ${newQty} units in history`);
-            } else {
-                // Fallback: create new if history not found
-                await db.collection('inventory').doc(resolved).update({
-                    stock: toner.stock - 1,
-                    lastUpdated: todayISO()
-                });
-                await db.collection('history').add({
-                    date: todayISO(),
-                    type: 'out',
-                    tonerCode: resolved,
-                    quantity: 1,
-                    customerOrSupplier: 'FAST SCAN',
-                    line: toner.line || '',
-                    costPerUnit: toner.cost || 0,
-                    timestamp: now
-                });
-                playAlertChime();
-                showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
-                console.log(`🆕 CREATED (fallback): ${resolved} qty: 1`);
+            if (e.key === 'Enter') {
+                const barcode = window._scanBuffer.chars.trim().toUpperCase();
+                window._scanBuffer.chars = '';
+                if (!barcode || barcode.length < 4) return;
+                
+                const resolved = resolveAlias(barcode);
+                const toner = inventory[resolved];
+                if (!toner) { 
+                    showToast(barcode + ' NOT FOUND', 'error'); 
+                    return; 
+                }
+                if (toner.stock < 1) { 
+                    showToast(toner.code + ' OUT OF STOCK', 'error'); 
+                    return; 
+                }
+                
+                const now = Date.now();
+                
+                // ★★★ MERGE CHECK: Uses local variables (INSTANT, no Firestore delay) ★★★
+                if (lastScannedCode === resolved && (now - lastScannedTime) < 5000) {
+                    // ✅ MERGE: Same toner scanned within 5 seconds - UPDATE existing record
+                    
+                    // Find the most recent FAST SCAN record for this toner
+                    const existingHistory = history.find(h => 
+                        h.tonerCode === resolved && 
+                        h.type === 'out' && 
+                        h.customerOrSupplier === 'FAST SCAN'
+                    );
+                    
+                    if (existingHistory) {
+                        // Update the existing record
+                        const newQty = existingHistory.quantity + 1;
+                        await db.collection('history').doc(existingHistory.id).update({
+                            quantity: newQty,
+                            timestamp: now
+                        });
+                        await db.collection('inventory').doc(resolved).update({
+                            stock: toner.stock - 1,
+                            lastUpdated: todayISO()
+                        });
+                        playAlertChime();
+                        showNotification('FAST SCAN', `${newQty} ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
+                    } else {
+                        // Fallback: create new if history not found
+                        await db.collection('inventory').doc(resolved).update({
+                            stock: toner.stock - 1,
+                            lastUpdated: todayISO()
+                        });
+                        await db.collection('history').add({
+                            date: todayISO(),
+                            type: 'out',
+                            tonerCode: resolved,
+                            quantity: 1,
+                            customerOrSupplier: 'FAST SCAN',
+                            line: toner.line || '',
+                            costPerUnit: toner.cost || 0,
+                            timestamp: now
+                        });
+                        playAlertChime();
+                        showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
+                    }
+                } else {
+                    // ✅ CREATE: First scan OR different toner OR outside 5-second window
+                    await db.collection('inventory').doc(resolved).update({
+                        stock: toner.stock - 1,
+                        lastUpdated: todayISO()
+                    });
+                    await db.collection('history').add({
+                        date: todayISO(),
+                        type: 'out',
+                        tonerCode: resolved,
+                        quantity: 1,
+                        customerOrSupplier: 'FAST SCAN',
+                        line: toner.line || '',
+                        costPerUnit: toner.cost || 0,
+                        timestamp: now
+                    });
+                    playAlertChime();
+                    showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
+                }
+                
+                // ★ CRITICAL: Update last scanned tracking for the NEXT scan
+                lastScannedCode = resolved;
+                lastScannedTime = now;
+                
+            } else if (e.key.length === 1) {
+                window._scanBuffer.chars += e.key;
+                window._scanBuffer.timer = setTimeout(() => { 
+                    window._scanBuffer.chars = ''; 
+                }, 100);
             }
-        } else {
-            // ✅ CREATE: First scan OR different toner OR outside 5-second window
-            
-            // Different toner or first scan - create new record
-            await db.collection('inventory').doc(resolved).update({
-                stock: toner.stock - 1,
-                lastUpdated: todayISO()
-            });
-            await db.collection('history').add({
-                date: todayISO(),
-                type: 'out',
-                tonerCode: resolved,
-                quantity: 1,
-                customerOrSupplier: 'FAST SCAN',
-                line: toner.line || '',
-                costPerUnit: toner.cost || 0,
-                timestamp: now
-            });
-            playAlertChime();
-            if (lastScannedCode !== resolved) {
-                showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
-                console.log(`🆕 NEW TONER: ${resolved} qty: 1`);
-            } else {
-                showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT. (outside merge window)`, 'out');
-                console.log(`🆕 NEW RECORD (window expired): ${resolved} qty: 1`);
-            }
-        }
-        
-        // ★ CRITICAL: Update last scanned tracking for the NEXT scan
-        lastScannedCode = resolved;
-        lastScannedTime = now;
-        
-    } else if (e.key.length === 1) {
-        window._scanBuffer.chars += e.key;
-        window._scanBuffer.timer = setTimeout(() => { 
-            window._scanBuffer.chars = ''; 
-        }, 100);
-    }
-});
-        // ★ FIXED: Handle outgoing with history
+        });
+
         window.handleOutgoing = async (e) => {
             e.preventDefault(); 
             const code = document.getElementById('outTonerNumber').value.trim().toUpperCase(); 
@@ -489,7 +464,6 @@ document.addEventListener('keydown', async (e) => {
             document.getElementById('outCode').focus(); 
         };
 
-        // All the existing modal functions
         window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
         window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
         window.openOutgoingModal = () => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outDate').value=todayISO(); };
