@@ -152,7 +152,7 @@
         </div>
     </div>
 
-    <!-- Modals (identical to previous, kept compact) -->
+    <!-- Modals (identical to original) -->
     <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>RECEIVE TONER</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="recDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="recCode" placeholder="SCAN BARCODE" required oninput="resolveBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('recCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER</label><input type="text" id="recTonerNumber" placeholder="TONER NUMBER" style="text-transform:uppercase;font-weight:700;"></div><div class="form-group"><label>PAINT LINE</label><select id="recLine" required></select></div></div><div class="form-row"><div class="form-group"><label>COLOR</label><input type="text" id="recColor"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="recQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>UNIT COST ($)</label><input type="number" id="recCost" step="0.01" min="0"></div><div class="form-group"><label>SUPPLIER</label><input type="text" id="recSupplier"></div></div><div class="form-row"><div class="form-group"><label>MIN LEVEL</label><input type="number" id="recMin" value="3" min="0"></div><div class="form-group"><label>NOTES</label><input type="text" id="recNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">DONE</button><button type="submit" class="btn btn-green">CONFIRM</button></div></form></div></div>
     <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>OUTGOING TONER</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="outDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="outCode" placeholder="SCAN BARCODE" required list="tonerSuggest" oninput="resolveOutBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('outCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER (AUTO)</label><input type="text" id="outTonerNumber" readonly style="background:#0b1219;font-weight:700;text-transform:uppercase;"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>CUSTOMER</label><input type="text" id="outCustomer"></div><div class="form-group"><label>LINE (AUTO)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.8rem;margin-bottom:10px;display:none;font-weight:700;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">DONE</button><button type="submit" class="btn btn-primary">CONFIRM</button></div></form></div></div>
     <div class="modal-overlay" id="orderDetailModal" style="display:none;"><div class="modal" id="orderDetailContent"></div></div>
@@ -164,18 +164,22 @@
     <datalist id="tonerSuggest"></datalist>
 
     <script>
-        // Firebase config (keep yours)
+        // ───────── Firebase init ─────────
         const firebaseConfig = { apiKey: "AIzaSyAzMfCPalgaZx7chEghiI_-kpIzvLq61BU", authDomain: "toner-track-pro-v2.firebaseapp.com", projectId: "toner-track-pro-v2", storageBucket: "toner-track-pro-v2.firebasestorage.app", messagingSenderId: "96521492059", appId: "1:96521492059:web:c40e09b3a53294246a117e" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // ───────── State ─────────
         const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
         let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
         let deviceMode = localStorage.getItem('tonerMode') || 'full';
         let currentLineFilter = '__ALL__';
-        let savingRowOrder = false;
+        let savingRowOrder = false;                     // ★ fix for drag race condition
+        let fastScanMode = false;
+        let scanBuffer = {};                            // ★ fast‑scan merge buffer
+        let scanFlushTimer = null;
 
-        // Listeners
+        // ───────── Realtime listeners ─────────
         db.collection('inventory').onSnapshot(s => { const n = {}; s.forEach(d => n[d.id] = d.data()); inventory = n; if(!editingCell) refreshUI(); });
         db.collection('history').orderBy('timestamp','desc').onSnapshot(s => { history = []; s.forEach(d => history.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
         db.collection('orders').orderBy('createdAt','desc').onSnapshot(s => { ordersList = []; s.forEach(d => ordersList.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
@@ -185,7 +189,7 @@
                 if(data.lines) lines = data.lines;
                 if(data.suppliers) suppliers = data.suppliers;
                 if(data.aliases) aliases = data.aliases;
-                if(data.rowOrder && !savingRowOrder) rowOrder = data.rowOrder;
+                if(data.rowOrder && !savingRowOrder) rowOrder = data.rowOrder;   // ★ skip while saving
             } else {
                 db.collection('settings').doc('config').set({lines:DEFAULT_LINES,suppliers:[],aliases:{},rowOrder:[]});
                 lines=[...DEFAULT_LINES]; suppliers=[]; aliases={}; rowOrder=[];
@@ -204,6 +208,7 @@
 
         function getOrderedInventory() { const all = Object.values(inventory); if (!rowOrder || rowOrder.length === 0) return all; const ordered = rowOrder.map(code => inventory[code]).filter(t => t); all.forEach(t => { if (!ordered.find(o => o.code === t.code)) ordered.push(t); }); return ordered; }
 
+        // ★ Fixed saveRowOrder – sets flag to prevent listener overwrite
         async function saveRowOrder() {
             rowOrder = [];
             document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => rowOrder.push(r.getAttribute('data-code')));
@@ -239,11 +244,274 @@
 
         window.quickAddToner = async () => { const code = document.getElementById('qaCode').value.trim().toUpperCase(); if(!code) { showToast('TONER NUMBER REQUIRED','error'); return; } const line = document.getElementById('qaLine').value; const stock = parseInt(document.getElementById('qaStock').value)||0, min = parseInt(document.getElementById('qaMin').value)||3; const cost = parseFloat(document.getElementById('qaCost').value)||0, barcode = (document.getElementById('qaBarcode')?.value?.trim()||'').toUpperCase(); const supplier = (document.getElementById('qaSupplier')?.value?.trim()||'').toUpperCase(); const ref = db.collection('inventory').doc(code); const doc = await ref.get(); if(!doc.exists){ await ref.set({code,color:'',stock,minLevel:min,lastUpdated:todayISO(),line,supplier,cost,totalSpent:cost*stock,barcode:barcode||code}); } else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO(),barcode:barcode||ex.barcode||ex.code}); } document.getElementById('qaCode').value=''; document.getElementById('qaStock').value='0'; document.getElementById('qaCost').value=''; if(document.getElementById('qaBarcode')) document.getElementById('qaBarcode').value=''; if(document.getElementById('qaSupplier')) document.getElementById('qaSupplier').value=''; showToast(`${code} ADDED`,'success'); };
 
-        // History with inline edit & undo
-        function renderHistory() { /* ... same as previous working version ... */ }
-        // (I'll compact the rest for length; but in your final file include them exactly as they were)
-        // The full history editing, undo, orders, receive, outgoing, settings, charts, etc. are all present.
-        // I'll append the remaining functions below.
+        // ───────── History with inline editing & undo ─────────
+        function renderHistory() {
+            const search = (document.getElementById('searchHistory')?.value||'').toUpperCase();
+            const filterType = document.getElementById('filterType')?.value||'all';
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = '';
+            let filtered = history;
+            if (filterType !== 'all') filtered = filtered.filter(h => h.type === filterType);
+            if (search) filtered = filtered.filter(h => h.tonerCode.toUpperCase().includes(search) || (h.customerOrSupplier||'').toUpperCase().includes(search) || (h.line||'').toUpperCase().includes(search));
+            filtered.slice(0,50).forEach(h => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-id', h.id);
+                tr.setAttribute('data-original-type', h.type);
+                tr.setAttribute('data-original-qty', h.quantity);
+                tr.setAttribute('data-original-cost', h.costPerUnit||0);
+                tr.setAttribute('data-original-code', h.tonerCode);
+                tr.innerHTML = `
+                    <td><span class="cell-editable" data-field="date" data-id="${h.id}">${h.date}</span></td>
+                    <td><span class="cell-editable" data-field="type" data-id="${h.id}" style="font-weight:700;text-transform:uppercase;">${h.type}</span></td>
+                    <td><span class="cell-editable" data-field="line" data-id="${h.id}">${(h.line||'').toUpperCase()}</span></td>
+                    <td style="font-weight:700;"><span class="cell-editable" data-field="tonerCode" data-id="${h.id}">${h.tonerCode}</span></td>
+                    <td><span class="cell-editable" data-field="quantity" data-id="${h.id}">${h.quantity}</span></td>
+                    <td><span class="cell-editable" data-field="costPerUnit" data-id="${h.id}">$${(h.costPerUnit||0).toFixed(2)}</span></td>
+                    <td><span class="cell-editable" data-field="customerOrSupplier" data-id="${h.id}">${h.customerOrSupplier||''}</span></td>
+                    <td><button class="btn btn-sm btn-danger" onclick="undoHistory('${h.id}')">UNDO</button></td>
+                `;
+                tr.querySelectorAll('.cell-editable').forEach(span => span.addEventListener('click', function(){ startHistoryEdit(this); }));
+                tbody.appendChild(tr);
+            });
+        }
+
+        function startHistoryEdit(span) {
+            if(editingCell) return;
+            const id = span.getAttribute('data-id');
+            const field = span.getAttribute('data-field');
+            const row = span.closest('tr');
+            const originalType = row.getAttribute('data-original-type');
+            const originalQty = parseInt(row.getAttribute('data-original-qty')) || 0;
+            const originalCost = parseFloat(row.getAttribute('data-original-cost')) || 0;
+            const originalCode = row.getAttribute('data-original-code');
+            editingCell = { id, field, originalType, originalQty, originalCost, originalCode, row };
+            const current = span.textContent.replace('$','');
+            const input = document.createElement('input');
+            input.type = (field === 'quantity' || field === 'costPerUnit') ? 'number' : 'text';
+            input.value = current;
+            if (field === 'quantity') { input.min = 1; input.step = 1; }
+            else if (field === 'costPerUnit') { input.step = '0.01'; input.min = '0'; }
+            span.replaceWith(input);
+            input.focus();
+            input.addEventListener('blur', () => finishHistoryEdit(input));
+            input.addEventListener('keydown', (e) => { if(e.key === 'Enter') input.blur(); });
+        }
+
+        async function finishHistoryEdit(input) {
+            const { id, field, originalType, originalQty, originalCost, originalCode, row } = editingCell;
+            const newVal = input.value.trim();
+            const ref = db.collection('history').doc(id);
+            const docSnap = await ref.get();
+            if (!docSnap.exists) { editingCell = null; refreshUI(); return; }
+            let updates = {};
+            if (field === 'date') updates.date = newVal;
+            else if (field === 'type') {
+                if (newVal !== 'in' && newVal !== 'out') { showToast('TYPE MUST BE "in" OR "out"','error'); editingCell = null; renderHistory(); return; }
+                updates.type = newVal;
+            }
+            else if (field === 'line') updates.line = newVal.toUpperCase();
+            else if (field === 'tonerCode') updates.tonerCode = newVal.toUpperCase();
+            else if (field === 'quantity') updates.quantity = parseInt(newVal) || 0;
+            else if (field === 'costPerUnit') updates.costPerUnit = parseFloat(newVal) || 0;
+            else if (field === 'customerOrSupplier') updates.customerOrSupplier = newVal;
+
+            const newType = (field === 'type' ? newVal : originalType);
+            const newQty = (field === 'quantity' ? parseInt(newVal)||0 : originalQty);
+            const newCost = (field === 'costPerUnit' ? parseFloat(newVal)||0 : originalCost);
+            const newCode = (field === 'tonerCode' ? newVal.toUpperCase() : originalCode);
+
+            if ((field === 'type' || field === 'quantity' || field === 'tonerCode' || field === 'costPerUnit') &&
+                (newType !== originalType || newQty !== originalQty || newCode !== originalCode || newCost !== originalCost)) {
+                if (originalType === 'in') { await adjustInventory(originalCode, -originalQty); }
+                else if (originalType === 'out') { await adjustInventory(originalCode, originalQty); }
+                if (newType === 'in') { await adjustInventory(newCode, newQty); }
+                else if (newType === 'out') { await adjustInventory(newCode, -newQty); }
+            }
+            await ref.update(updates);
+            editingCell = null;
+            showToast('History updated','success');
+            refreshUI();
+        }
+
+        async function adjustInventory(tonerCode, delta) {
+            if (!tonerCode || delta === 0) return;
+            const ref = db.collection('inventory').doc(tonerCode);
+            const doc = await ref.get();
+            if (doc.exists) {
+                const data = doc.data();
+                const newStock = Math.max(0, (data.stock || 0) + delta);
+                await ref.update({ stock: newStock, lastUpdated: todayISO() });
+            } else {
+                if (delta > 0) {
+                    await ref.set({ code: tonerCode, stock: delta, minLevel: 3, lastUpdated: todayISO(), line: lines[0], supplier: '', color: '', cost: 0, totalSpent: 0, barcode: tonerCode });
+                }
+            }
+        }
+
+        window.undoHistory = async (historyId) => {
+            if (!confirm('UNDO THIS TRANSACTION? THIS WILL REVERSE THE STOCK CHANGE AND DELETE THE RECORD.')) return;
+            const docRef = db.collection('history').doc(historyId);
+            const snap = await docRef.get();
+            if (!snap.exists) { showToast('History not found','error'); return; }
+            const data = snap.data();
+            const code = data.tonerCode;
+            const qty = data.quantity || 0;
+            const type = data.type;
+            if (type === 'in') { await adjustInventory(code, -qty); }
+            else if (type === 'out') { await adjustInventory(code, qty); }
+            await docRef.delete();
+            showToast('Transaction undone','success');
+        };
+
+        // ───────── Fast scan with merge buffer ─────────
+        window.toggleFastScan = () => {
+            fastScanMode = !fastScanMode;
+            document.getElementById('btnFastScan').style.background = fastScanMode ? 'var(--green)' : '';
+            document.getElementById('btnFastScan').textContent = fastScanMode ? 'SCAN MODE ON' : 'FAST SCAN';
+            if (fastScanMode) {
+                scanBuffer = {};
+                showToast('FAST SCAN MODE ON - SCANS MERGE AUTOMATICALLY', 'success');
+            } else {
+                flushScanBuffer();
+                showToast('FAST SCAN MODE OFF', 'success');
+            }
+        };
+
+        function bufferScan(code, docId, toner) {
+            if (!scanBuffer[code]) {
+                scanBuffer[code] = { totalQty: 0, docId, toner };
+            }
+            scanBuffer[code].totalQty += 1;
+            const newStock = Math.max(0, toner.stock - scanBuffer[code].totalQty);
+            db.collection('inventory').doc(docId).update({ stock: newStock, lastUpdated: todayISO() });
+            clearTimeout(scanFlushTimer);
+            scanFlushTimer = setTimeout(flushScanBuffer, 2000);
+            playAlertChime();
+            showNotification('FAST SCAN', `+1 ${code} (pending). ${newStock} left.`, 'out');
+        }
+
+        async function flushScanBuffer() {
+            if (Object.keys(scanBuffer).length === 0) return;
+            const entries = Object.entries(scanBuffer);
+            scanBuffer = {};
+            clearTimeout(scanFlushTimer);
+            for (const [code, entry] of entries) {
+                const { totalQty, docId, toner } = entry;
+                await db.collection('history').add({
+                    date: todayISO(),
+                    type: 'out',
+                    tonerCode: code,
+                    quantity: totalQty,
+                    customerOrSupplier: 'FAST SCAN (BATCH)',
+                    line: toner.line,
+                    costPerUnit: toner.cost || 0,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        document.addEventListener('keydown', async (e) => {
+            if (!fastScanMode) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
+            clearTimeout(window._scanBuffer.timer);
+            if (e.key === 'Enter') {
+                const barcode = window._scanBuffer.chars.trim().toUpperCase();
+                window._scanBuffer.chars = '';
+                if (!barcode || barcode.length < 4) return;
+                const resolved = resolveAlias(barcode);
+                const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === resolved);
+                if (!tonerEntry) { showToast(barcode + ' NOT FOUND','error'); return; }
+                const [docId, toner] = tonerEntry;
+                if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
+                bufferScan(resolved, docId, toner);
+            } else if (e.key.length === 1) {
+                window._scanBuffer.chars += e.key;
+                window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
+            }
+        });
+
+        // ───────── Quick outgoing from inventory ─────────
+        window.quickOutgoing = (code) => {
+            const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === code);
+            if (!tonerEntry) return;
+            const [docId, t] = tonerEntry;
+            document.getElementById('outgoingModal').style.display = 'flex';
+            document.getElementById('outCode').value = t?.barcode || code;
+            document.getElementById('outTonerNumber').value = t.code;
+            document.getElementById('outDate').value = todayISO();
+            document.getElementById('outLineDisplay').value = t?.line || '';
+        };
+
+        // ───────── Receive / Outgoing modals ─────────
+        window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
+        window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
+        window.openOutgoingModal = () => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outDate').value=todayISO(); };
+        window.closeOutgoingModal = () => document.getElementById('outgoingModal').style.display='none';
+        window.openCreateOrderModal = () => { document.getElementById('createOrderModal').style.display='flex'; populateSupplierSelect('orderSupplier'); document.getElementById('orderItems').innerHTML=''; addOrderItem(); };
+        window.closeCreateOrderModal = () => document.getElementById('createOrderModal').style.display='none';
+        window.addOrderItem = () => { const c=document.getElementById('orderItems'); const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="TONER NUMBER" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="number" value="1" min="1" style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>'; c.appendChild(d); };
+
+        // ───────── Orders ─────────
+        function renderOrders() { const filter = document.getElementById('orderFilter')?.value||'pending'; let filtered = ordersList; if(filter==='pending') filtered = ordersList.filter(o=>o.status==='pending'); else if(filter==='partial') filtered = ordersList.filter(o=>o.status==='partial'); else if(filter==='complete') filtered = ordersList.filter(o=>o.status==='complete'); const container = document.getElementById('ordersList'); container.innerHTML = ''; filtered.forEach(ord => { const total = ord.items.reduce((s,i)=>s+i.quantityOrdered,0); const received = ord.items.reduce((s,i)=>s+i.quantityReceived,0); const pct = total>0?Math.round((received/total)*100):0; const card = document.createElement('div'); card.className='order-card'; card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><strong>${ord.supplier.toUpperCase()}</strong><span style="font-size:0.7rem;font-weight:700;">${ord.status.toUpperCase()}</span></div><p style="font-size:0.8rem;color:var(--text2);">Expected: ${ord.expectedDelivery} | Notes: ${ord.notes||'None'}</p><p style="font-size:0.8rem;">Received: ${received}/${total} items | Est. Cost: $${(ord.estimatedCost||0).toFixed(2)}</p><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><button class="btn btn-sm btn-outline" style="margin-top:10px;" onclick="openOrderDetail('${ord.id}')">VIEW / RECEIVE</button>`; container.appendChild(card); }); }
+        window.openOrderDetail = (orderId) => { /* unchanged */ const ord = ordersList.find(o => o.id === orderId); if (!ord) return; document.getElementById('orderDetailModal').style.display = 'flex'; const container = document.getElementById('orderDetailContent'); const total = ord.items.reduce((s,i)=>s+i.quantityOrdered,0); const received = ord.items.reduce((s,i)=>s+i.quantityReceived,0); container.innerHTML = `<h3 style="text-transform:uppercase;font-weight:800;margin-bottom:12px;">ORDER DETAILS</h3><p><strong>SUPPLIER:</strong> ${ord.supplier}</p><p><strong>ORDER DATE:</strong> ${ord.orderDate}</p><p><strong>EXPECTED:</strong> ${ord.expectedDelivery}</p><p><strong>STATUS:</strong> ${ord.status} | <strong>RECEIVED:</strong> ${received}/${total}</p><p><strong>NOTES:</strong> ${ord.notes||'None'}</p><table style="width:100%;margin-top:12px;"><tr><th>CODE</th><th>COLOR</th><th>ORDERED</th><th>RECEIVED</th><th>ACTION</th></tr>${ord.items.map((item,i)=>`<tr><td>${item.tonerCode}</td><td>${item.color}</td><td>${item.quantityOrdered}</td><td>${item.quantityReceived}</td><td>${item.quantityReceived<item.quantityOrdered?`<button class="btn btn-sm btn-green" onclick="receiveOrderItem('${ord.id}',${i})">RECEIVE</button>`:'COMPLETE'}</td></tr>`).join('')}</table><div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">${ord.status!=='complete'?`<button class="btn btn-primary" onclick="receiveAllOrder('${ord.id}')">RECEIVE ALL</button>`:''}<button class="btn btn-outline" onclick="closeOrderDetail()">CLOSE</button></div>`; };
+        window.closeOrderDetail = () => { document.getElementById('orderDetailModal').style.display='none'; };
+        window.receiveOrderItem = async (orderId, itemIndex) => { /* unchanged */ const ord = ordersList.find(o => o.id === orderId); if (!ord) return; const item = ord.items[itemIndex]; const remaining = item.quantityOrdered - item.quantityReceived; const qty = parseInt(prompt(`RECEIVE HOW MANY OF ${item.tonerCode}? (REMAINING: ${remaining})`, remaining)); if (!qty || qty <= 0 || qty > remaining) return; ord.items[itemIndex].quantityReceived += qty; const allReceived = ord.items.every(i => i.quantityReceived >= i.quantityOrdered); await db.collection('orders').doc(orderId).update({ items: ord.items, status: allReceived?'complete':'partial', updatedAt: Date.now() }); await receiveTonerDirect(item.tonerCode, item.color, qty, ord.supplier, `ORDER: ${ord.notes||orderId}`, todayISO(), item.line); showToast(`RECEIVED ${qty} OF ${item.tonerCode}`,'success'); closeOrderDetail(); };
+        window.receiveAllOrder = async (orderId) => { /* unchanged */ if (!confirm('RECEIVE ALL REMAINING ITEMS IN THIS ORDER?')) return; const ord = ordersList.find(o => o.id === orderId); if (!ord) return; for (const item of ord.items) { const remaining = item.quantityOrdered - item.quantityReceived; if (remaining > 0) { await receiveTonerDirect(item.tonerCode, item.color, remaining, ord.supplier, `ORDER: ${ord.notes||orderId}`, todayISO(), item.line); item.quantityReceived = item.quantityOrdered; } } await db.collection('orders').doc(orderId).update({ items: ord.items, status: 'complete', updatedAt: Date.now() }); showToast('ORDER FULLY RECEIVED!','success'); closeOrderDetail(); };
+        async function receiveTonerDirect(code, color, qty, supplier, notes, date, line) { const ref = db.collection('inventory').doc(code); const doc = await ref.get(); if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:3,lastUpdated:date,line,supplier,cost:0,totalSpent:0}); } else { const ex=doc.data(); await ref.update({stock:(ex.stock||0)+qty,lastUpdated:date,line:line||ex.line,supplier:supplier||ex.supplier||''}); } await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:0,timestamp:Date.now()}); }
+        window.handleReceive = async (e) => { e.preventDefault(); const line=document.getElementById('recLine').value, code=document.getElementById('recTonerNumber').value.trim().toUpperCase() || document.getElementById('recCode').value.trim().toUpperCase(); if(!line||!code){ showToast('TONER NUMBER AND LINE REQUIRED','error'); return; } const qty=parseInt(document.getElementById('recQty').value)||0, cost=parseFloat(document.getElementById('recCost').value)||0; const supplier=document.getElementById('recSupplier').value.trim(), min=parseInt(document.getElementById('recMin').value)||3; const date=document.getElementById('recDate').value, color=document.getElementById('recColor').value.trim(), barcode=document.getElementById('recCode').value.trim().toUpperCase(); const ref=db.collection('inventory').doc(code); const doc=await ref.get(); if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:min,lastUpdated:date,line,supplier,cost,totalSpent:cost*qty,barcode:barcode||code}); } else { const ex=doc.data(); const ns=(ex.stock||0)+qty, nts=(ex.totalSpent||0)+(cost*qty); await ref.update({stock:ns,color:color||ex.color,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?nts/ns:0,totalSpent:nts,lastUpdated:date,barcode:barcode||ex.barcode||ex.code}); } if (barcode && barcode !== code && !aliases[barcode]) { const newAliases = {...aliases, [barcode]: code}; await db.collection('settings').doc('config').update({ aliases: newAliases }); } await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:cost,timestamp:Date.now()}); showToast(`${code} RECEIVED`,'success'); document.getElementById('recCode').value=''; document.getElementById('recTonerNumber').value=''; document.getElementById('recQty').value='1'; document.getElementById('recCost').value=''; document.getElementById('recCode').focus(); };
+        window.handleOutgoing = async (e) => { e.preventDefault(); const code = document.getElementById('outTonerNumber').value.trim().toUpperCase(); if (!code) { showToast('TONER NUMBER MISSING','error'); return; } const qty = parseInt(document.getElementById('outQty').value) || 0; const snapshot = await db.collection('inventory').where('code', '==', code).get(); if (snapshot.empty) { showToast('TONER NOT FOUND','error'); return; } const doc = snapshot.docs[0]; const t = doc.data(); if (t.stock < qty) { showToast(`ONLY ${t.stock} AVAILABLE`,'error'); return; } await doc.ref.update({ stock: t.stock - qty, lastUpdated: document.getElementById('outDate').value }); await db.collection('history').add({ date: document.getElementById('outDate').value, type: 'out', tonerCode: code, quantity: qty, customerOrSupplier: document.getElementById('outCustomer').value.trim() || 'WALK-IN', line: t.line, costPerUnit: t.cost || 0, timestamp: Date.now() }); showNotification('OUTGOING', `${qty} ${code} SHIPPED. ${t.stock - qty} LEFT.`, 'out'); showToast(`${code} SHIPPED`, 'success'); document.getElementById('outCode').value = ''; document.getElementById('outTonerNumber').value = ''; document.getElementById('outQty').value = '1'; document.getElementById('outCode').focus(); };
+        window.createOrder = async (e) => { e.preventDefault(); const supplier=document.getElementById('orderSupplier').value, delivery=document.getElementById('orderDelivery').value, notes=document.getElementById('orderNotes').value; if(!supplier||!delivery){ showToast('SUPPLIER AND DATE REQUIRED','error'); return; } const items=[], divs=document.querySelectorAll('#orderItems > div'); divs.forEach(d=>{ const ins=d.querySelectorAll('input'); const code=ins[0].value.trim().toUpperCase(), qty=parseInt(ins[1].value)||0; if(code&&qty>0) items.push({tonerCode:code,quantityOrdered:qty,quantityReceived:0,color:inventory[code]?.color||'N/A',line:inventory[code]?.line||lines[0]}); }); if(items.length===0){ showToast('ADD AT LEAST ONE ITEM','error'); return; } const supplierData = suppliers.find(s=>(s.name||'').toUpperCase()===supplier.toUpperCase()); let estCost = 0; items.forEach(i=>{ const t=inventory[i.tonerCode]; if(t?.cost) estCost += t.cost * i.quantityOrdered; }); await db.collection('orders').add({supplier,supplierEmail:supplierData?.email||'',orderDate:todayISO(),expectedDelivery:delivery,status:'pending',items,notes,estimatedCost:estCost,createdAt:Date.now()}); closeCreateOrderModal(); showToast(`ORDER CREATED. EST COST: $${estCost.toFixed(2)}`,'success'); };
+        window.reorderLowStock = () => { /* unchanged */ const low = Object.values(inventory).filter(t => t.stock < t.minLevel); if (low.length === 0) { showToast('NO LOW-STOCK TONERS.','error'); return; } const bySupplier = {}; low.forEach(t => { const s = (t.supplier || 'UNKNOWN').toUpperCase(); if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); }); const firstSupplier = Object.keys(bySupplier)[0]; document.getElementById('createOrderModal').style.display='flex'; populateSupplierSelect('orderSupplier', firstSupplier); document.getElementById('orderDelivery').value = ''; document.getElementById('orderNotes').value = 'LOW-STOCK REORDER'; const container = document.getElementById('orderItems'); container.innerHTML = ''; bySupplier[firstSupplier].forEach(t => { const div = document.createElement('div'); div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px'; div.innerHTML = `<input type="text" value="${t.code}" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="number" value="${Math.max(t.minLevel*2-t.stock,1)}" min="1" style="width:80px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`; container.appendChild(div); }); };
+
+        // ───────── Charts & stats ─────────
+        function updateStats() { const filtered = currentLineFilter==='__ALL__'?Object.values(inventory):Object.values(inventory).filter(t=>(t.line||'').toUpperCase()===currentLineFilter.toUpperCase()); const unique = filtered.length, total = filtered.reduce((s,t)=>s+t.stock,0), low = filtered.filter(t=>t.stock<t.minLevel).length; const totalValue = filtered.reduce((s,t)=>s+(t.stock*(t.cost||0)),0); document.getElementById('statRow').innerHTML = `<div class="stat-card"><div class="label">UNIQUE</div><div class="value" style="color:var(--blue);">${unique}</div></div><div class="stat-card"><div class="label">TOTAL UNITS</div><div class="value" style="color:var(--green);">${total}</div></div><div class="stat-card"><div class="label">TOTAL VALUE</div><div class="value" style="color:var(--blue);">$${totalValue.toFixed(0)}</div></div><div class="stat-card"><div class="label">LOW STOCK</div><div class="value" style="color:var(--accent);">${low}</div></div>`; }
+        function updateMiniCards() { const container = document.getElementById('miniCardsRow'); container.innerHTML = ''; const totalValue = Object.values(inventory).reduce((s,t)=>s+(t.stock*(t.cost||0)),0); const totalCard = document.createElement('div'); totalCard.className='mini-card'; totalCard.innerHTML = `<div class="line-name">TOTAL STOCK VALUE</div><div class="line-stats">$${totalValue.toFixed(2)}</div>`; container.appendChild(totalCard); lines.forEach(line => { const lineToners = Object.values(inventory).filter(t=>(t.line||'').toUpperCase()===line.toUpperCase()); const units = lineToners.reduce((s,t)=>s+t.stock,0), value = lineToners.reduce((s,t)=>s+(t.stock*(t.cost||0)),0); const card = document.createElement('div'); card.className='mini-card'; card.onclick = function(){ currentLineFilter = line; renderLineTabs(); renderInventory(); }; card.innerHTML = `<div class="line-name">${line.toUpperCase()}</div><div class="line-stats">${units} UNITS | $${value.toFixed(2)}</div>`; container.appendChild(card); }); }
+        function drawBarChart() { const canvas = document.getElementById('barChart'); if(!canvas) return; const ctx = canvas.getContext('2d'); const data = lines.map(line => ({line: line.toUpperCase(), stock: Object.values(inventory).filter(t=>(t.line||'').toUpperCase()===line.toUpperCase()).reduce((s,t)=>s+t.stock,0)})); const max = Math.max(...data.map(d=>d.stock),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=180; ctx.clearRect(0,0,w,180); const barWidth = (w-(data.length+1)*20)/data.length; const gradient = ctx.createLinearGradient(0,0,0,180); gradient.addColorStop(0,'#f68523'); gradient.addColorStop(1,'#e0741a'); data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.stock/max)*130; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,160-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.fillText(d.stock,x+barWidth/2,158-barH-4); ctx.fillStyle='#9ba5b0'; ctx.font='10px Inter'; ctx.fillText(d.line,x+barWidth/2,173); }); }
+        function drawSpendingChart() { const canvas = document.getElementById('spendingChart'); if(!canvas) return; const ctx = canvas.getContext('2d'); const fourWeeksAgo = new Date(Date.now()-28*24*60*60*1000).toISOString().slice(0,10); const recentIn = history.filter(h=>h.type==='in' && h.date>=fourWeeksAgo); const spending = {}; lines.forEach(l=>spending[l]=0); recentIn.forEach(h=>{ if(spending[h.line]!==undefined) spending[h.line] += (h.costPerUnit||0)*h.quantity; }); const data = lines.map(line=>({line: line.toUpperCase(),spent:spending[line]||0})); const max = Math.max(...data.map(d=>d.spent),1), w = canvas.parentElement.clientWidth-40; canvas.width=w; canvas.height=180; ctx.clearRect(0,0,w,180); const barWidth = (w-(data.length+1)*20)/data.length; const gradient = ctx.createLinearGradient(0,0,0,180); gradient.addColorStop(0,'#2d9cdb'); gradient.addColorStop(1,'#1a6fa0'); data.forEach((d,i)=>{ const x=20+i*(barWidth+20); const barH=(d.spent/max)*130; ctx.fillStyle=gradient; ctx.beginPath(); ctx.roundRect(x,160-barH,barWidth,barH,6); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='bold 11px Inter'; ctx.textAlign='center'; ctx.fillText('$'+d.spent.toFixed(0),x+barWidth/2,158-barH-4); ctx.fillStyle='#9ba5b0'; ctx.font='10px Inter'; ctx.fillText(d.line,x+barWidth/2,173); }); }
+        window.addEventListener('resize',()=>{ drawBarChart(); drawSpendingChart(); });
+        function updateSuggestions() { const container = document.getElementById('suggestionsWidget'); const suggestions = []; const lowToners = Object.values(inventory).filter(t => t.stock < t.minLevel); if (lowToners.length > 0) { const bySupplier = {}; lowToners.forEach(t => { const s = (t.supplier || 'UNKNOWN').toUpperCase(); if (!bySupplier[s]) bySupplier[s] = []; bySupplier[s].push(t); }); Object.entries(bySupplier).forEach(([supplier, toners]) => { suggestions.push(`REORDER FROM ${supplier}: ${toners.map(t=>t.code).join(', ')} (${toners.length} TONERS LOW)`); }); } Object.values(inventory).forEach(t => { if (t.stock > t.minLevel * 3 && t.stock > 10) { suggestions.push(`OVERSTOCKED: ${t.code} (${t.stock} VS MIN ${t.minLevel}). CONSIDER REDUCING.`); } }); Object.values(inventory).forEach(t => { const recentIn = history.filter(h => h.tonerCode === t.code && h.type === 'in'); if (recentIn.length >= 2) { const cheapest = recentIn.reduce((min, curr) => (curr.costPerUnit||999) < (min.costPerUnit||999) ? curr : min, recentIn[0]); if (cheapest.costPerUnit < (t.cost||0) * 0.9) { suggestions.push(`COST SAVING: ${t.code} LAST BOUGHT AT $${t.cost.toFixed(2)} FROM ${(t.supplier||'').toUpperCase()}, BUT ${(cheapest.customerOrSupplier||'').toUpperCase()} OFFERED $${cheapest.costPerUnit.toFixed(2)}.`); } } }); container.innerHTML = suggestions.slice(0,5).map(s => `<div class="suggestion-card">${s}</div>`).join(''); }
+        function renderLowStock() { const low = Object.values(inventory).filter(t=>t.stock<t.minLevel); const tbody = document.getElementById('lowStockBody'); tbody.innerHTML = ''; low.forEach(t => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${(t.line||'').toUpperCase()}</td><td style="font-weight:700;">${t.code}</td><td>${t.color}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.minLevel-t.stock}</td>`; tbody.appendChild(tr); }); }
+
+        // ───────── Utilities ─────────
+        const playAlertChime = () => { try { const ctx = new (window.AudioContext||window.webkitAudioContext)(); [660,880].forEach((f,i)=>{const o=ctx.createOscillator();const g=ctx.createGain();o.type='sine';o.frequency.value=f;g.gain.value=0.15;o.connect(g);g.connect(ctx.destination);o.start(ctx.currentTime+i*0.15);o.stop(ctx.currentTime+i*0.15+0.15);}); setTimeout(()=>ctx.close(),400); } catch(e) {} };
+        function showNotification(title, message, type='info') { const container = document.getElementById('notificationContainer'); const popup = document.createElement('div'); popup.className = 'notification-popup'; popup.innerHTML = `<h4>${type==='low'?'LOW STOCK':type==='out'?'OUTGOING':'INFO'} ${title}</h4><p>${message}</p><button class="btn btn-primary" onclick="this.parentElement.remove()">OK</button>`; container.appendChild(popup); if (type === 'low') playAlertChime(); }
+        function generateReportHTML() { const toners = Object.values(inventory).sort((a,b)=>(a.line||'').localeCompare(b.line||'')||a.code.localeCompare(b.code)); const low = toners.filter(t=>t.stock<t.minLevel); const pending = ordersList.filter(o=>o.status==='pending'||o.status==='partial'); let html = `<html><body style="font-family:Inter,Arial,sans-serif;max-width:800px;margin:auto;"><h2 style="color:#f68523;text-transform:uppercase;">TONERTRACK BI-WEEKLY REPORT</h2><p>DATE: ${new Date().toLocaleDateString()}</p>`; html += `<h3 style="text-transform:uppercase;">ALL TONERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr style="background:#f5f5f5;"><th>LINE</th><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>COST</th><th>STATUS</th></tr>`; toners.forEach(t=>{ html += `<tr><td>${(t.line||'').toUpperCase()}</td><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.stock<t.minLevel?'LOW':'OK'}</td></tr>`; }); html += `</table>`; if(low.length>0){ html += `<h3 style="color:#e74c3c;text-transform:uppercase;">LOW STOCK</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>LINE</th><th>TONER NUMBER</th><th>STOCK</th><th>MIN</th><th>DEFICIT</th></tr>`; low.forEach(t=>html+=`<tr><td>${(t.line||'').toUpperCase()}</td><td>${t.code}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${t.minLevel-t.stock}</td></tr>`); html+=`</table>`; } if(pending.length>0){ html += `<h3 style="text-transform:uppercase;">PENDING ORDERS</h3><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>SUPPLIER</th><th>EXPECTED</th><th>ITEMS</th><th>STATUS</th></tr>`; pending.forEach(o=>html+=`<tr><td>${(o.supplier||'').toUpperCase()}</td><td>${o.expectedDelivery}</td><td>${o.items.map(i=>`${i.tonerCode}(${i.quantityOrdered-i.quantityReceived})`).join(', ')}</td><td>${o.status.toUpperCase()}</td></tr>`); html+=`</table>`; } html += `<h3 style="text-transform:uppercase;">SUPPLIER PURCHASE REPORTS</h3>`; const bySupplier = {}; low.forEach(t=>{ const s=(t.supplier||'UNKNOWN').toUpperCase(); if(!bySupplier[s]) bySupplier[s]=[]; bySupplier[s].push(t); }); Object.entries(bySupplier).forEach(([supplier,toners])=>{ html+=`<h4>${supplier}</h4><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;"><tr><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>SUGGESTED REORDER</th></tr>`; toners.forEach(t=>html+=`<tr><td>${t.code}</td><td>${t.color}</td><td>${t.stock}</td><td>${t.minLevel}</td><td>${Math.max(t.minLevel*2-t.stock,1)}</td></tr>`); html+=`</table>`; }); html += `</body></html>`; return html; }
+        window.exportCSV = () => { const inv=Object.values(inventory); const h=['LINE','SCAN CODE','TONER NUMBER','SUPPLIER','COLOR','STOCK','MIN','COST']; const r=inv.map(t=>[(t.line||'').toUpperCase(),t.barcode||t.code,t.code,(t.supplier||'').toUpperCase(),t.color||'',t.stock,t.minLevel,(t.cost||0).toFixed(2)]); const csv=[h,...r].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'); const b=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`INVENTORY_${todayISO()}.csv`; a.click(); };
+        window.printReport = () => { const html = generateReportHTML(); const w=window.open('','_blank'); w.document.write(html); w.document.close(); };
+        window.exportData = () => { const data={inventory,history,lines,suppliers,aliases,rowOrder,ordersList,exportedAt:new Date().toISOString()}; const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`BACKUP_${todayISO()}.json`; a.click(); };
+        window.importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(data.inventory){ const batch=db.batch(); const ids=await db.collection('inventory').get(); ids.forEach(d=>batch.delete(d.ref)); Object.entries(data.inventory).forEach(([k,v])=>batch.set(db.collection('inventory').doc(k),v)); await batch.commit(); if(data.lines&&data.suppliers) await db.collection('settings').doc('config').set({lines:data.lines,suppliers:data.suppliers,aliases:data.aliases||{},rowOrder:data.rowOrder||[]}); showToast('DATA RESTORED','success'); } } catch{ showToast('ERROR READING FILE','error'); } }; r.readAsText(f); e.target.value=''; };
+        window.openAliasModal = () => { document.getElementById('aliasModal').style.display='flex'; renderAliasList(); };
+        window.closeAliasModal = () => document.getElementById('aliasModal').style.display='none';
+        const renderAliasList = () => { const container=document.getElementById('aliasList');container.innerHTML='';Object.entries(aliases).forEach(([barcode,toner])=>{const row=document.createElement('div');row.className='alias-row';row.innerHTML=`<input type="text" value="${barcode}" placeholder="BARCODE"><input type="text" value="${toner}" placeholder="TONER NUMBER"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`;container.appendChild(row);}); document.getElementById('addAliasBtn').onclick=()=>{const row=document.createElement('div');row.className='alias-row';row.innerHTML=`<input type="text" placeholder="BARCODE"><input type="text" placeholder="TONER NUMBER"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`;container.appendChild(row);}; };
+        window.saveAliases = async () => { const rows=document.querySelectorAll('#aliasList .alias-row');const newAliases={};rows.forEach(row=>{const barcode=row.querySelectorAll('input')[0].value.trim().toUpperCase();const toner=row.querySelectorAll('input')[1].value.trim().toUpperCase();if(barcode&&toner)newAliases[barcode]=toner;});await db.collection('settings').doc('config').update({aliases:newAliases});closeAliasModal();showToast('ALIASES SAVED','success'); };
+        window.learnAliasesFromInventory = async () => { if (!confirm('CREATE ALIASES FOR ALL EXISTING TONERS WITH BARCODES?')) return; const newAliases = {...aliases}; let count = 0; Object.values(inventory).forEach(t => { if (t.barcode && t.barcode !== t.code && t.code) { if (!newAliases[t.barcode]) { newAliases[t.barcode] = t.code; count++; } } }); if (count > 0) { await db.collection('settings').doc('config').update({ aliases: newAliases }); showToast(`${count} ALIASES LEARNED!`,'success'); } else { showToast('NO NEW ALIASES TO LEARN.','error'); } };
+        window.openSettingsModal = () => { document.getElementById('settingsModal').style.display='flex'; const lc = document.getElementById('lineSettingsFields'); lc.innerHTML = ''; lines.forEach(l=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${l.toUpperCase()}" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;">`; lc.appendChild(d); }); document.getElementById('addLineBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML='<input type="text" placeholder="NEW LINE NAME" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;">'; lc.appendChild(d); }; const sc = document.getElementById('supplierList'); sc.innerHTML = ''; suppliers.forEach(s=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${(s.name||'').toUpperCase()}" placeholder="NAME" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="email" value="${s.email||''}" placeholder="EMAIL" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`; sc.appendChild(d); }); document.getElementById('addSupplierBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="SUPPLIER NAME" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="email" placeholder="EMAIL" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>'; sc.appendChild(d); }; document.getElementById('deviceMode').value = localStorage.getItem('tonerMode')||'full'; };
+        window.closeSettingsModal = () => document.getElementById('settingsModal').style.display='none';
+        window.saveAllSettings = async () => { const inputs = document.querySelectorAll('#lineSettingsFields input'); const nl = []; inputs.forEach(i=>{ const v=i.value.trim().toUpperCase(); if(v)nl.push(v); }); if(nl.length===0){ showToast('NEED AT LEAST 1 LINE','error'); return; } const sds = document.querySelectorAll('#supplierList > div'); const ns = []; sds.forEach(d=>{ const ins=d.querySelectorAll('input'); const name=ins[0].value.trim(), email=ins[1].value.trim(); if(name)ns.push({name:name.toUpperCase(),email}); }); const mode = document.getElementById('deviceMode').value; localStorage.setItem('tonerMode',mode); const oldLines = [...lines]; const newLines = [...nl]; const batch = db.batch(); for (let i = 0; i < oldLines.length; i++) { if (oldLines[i].toUpperCase() !== newLines[i]?.toUpperCase() && newLines[i]) { const snap = await db.collection('inventory').where('line', '==', oldLines[i]).get(); snap.forEach(doc => { batch.update(doc.ref, { line: newLines[i] }); }); } } await batch.commit(); await db.collection('settings').doc('config').update({lines:nl,suppliers:ns}); closeSettingsModal(); showToast('SETTINGS SAVED','success'); applyDeviceMode(); };
+        window.normalizeAllLineNames = async () => { if (!confirm('THIS WILL CONVERT ALL TONER LINE NAMES TO UPPERCASE AND MATCH THEM TO THE CLOSEST SETTINGS LINE. CONTINUE?')) return; const batch = db.batch(); const allDocs = await db.collection('inventory').get(); let count = 0; allDocs.forEach(doc => { const data = doc.data(); const currentLine = (data.line || '').trim(); const upperLine = currentLine.toUpperCase(); const match = lines.find(l => l.toUpperCase() === upperLine); if (match && match !== currentLine) { batch.update(doc.ref, { line: match }); count++; } else if (!match && currentLine) { batch.update(doc.ref, { line: upperLine }); count++; } }); if (count > 0) { await batch.commit(); showToast(`${count} TONERS NORMALIZED.`,'success'); } else { showToast('ALL LINE NAMES ALREADY MATCH.','error'); } };
+        window.fixDataSwapCodes = async () => { if (!confirm('THIS WILL MOVE YOUR TONER NUMBERS FROM THE COLOR FIELD TO THE CODE FIELD. CONTINUE?')) return; const batch = db.batch(); const allDocs = await db.collection('inventory').get(); let count = 0; allDocs.forEach(doc => { const data = doc.data(); const oldCode = data.code || ''; const oldColor = data.color || ''; if (oldColor && oldColor !== oldCode && oldColor !== 'N/A') { const newData = { code: oldColor.toUpperCase(), color: oldColor, barcode: oldCode }; batch.set(doc.ref, newData, { merge: true }); count++; } }); if (count > 0) { await batch.commit(); showToast(`${count} TONERS FIXED.`,'success'); } else { showToast('NO TONERS NEEDED FIXING.','error'); } };
+        window.fixDocumentIDs = async () => { if (!confirm('THIS WILL REWRITE DOCUMENT IDS TO MATCH TONER NUMBER. CONTINUE?')) return; const batch = db.batch(); const allDocs = await db.collection('inventory').get(); let count = 0; for (const doc of allDocs) { const data = doc.data(); const code = (data.code || '').trim().toUpperCase(); if (!code) continue; if (doc.id !== code) { batch.set(db.collection('inventory').doc(code), data); batch.delete(doc.ref); count++; } } if (count > 0) { await batch.commit(); showToast(`${count} DOCUMENT IDS FIXED.`,'success'); } else { showToast('ALL DOCUMENT IDS ALREADY MATCH.','error'); } };
+
+        function populateLineSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; lines.forEach(l=>{ const o=document.createElement('option'); o.value=l; o.textContent=l.toUpperCase(); if(l.toUpperCase()===(sel||'').toUpperCase())o.selected=true; s.appendChild(o); }); }
+        function populateSupplierSelect(id,sel){ const s=document.getElementById(id); s.innerHTML=''; suppliers.forEach(sp=>{ const o=document.createElement('option'); o.value=sp.name; o.textContent=(sp.name||'').toUpperCase(); if((sp.name||'').toUpperCase()===(sel||'').toUpperCase())o.selected=true; s.appendChild(o); }); }
+        function updateTonerSuggest() { const datalist = document.getElementById('tonerSuggest'); datalist.innerHTML = ''; Object.values(inventory).forEach(t=>{ const opt = document.createElement('option'); opt.value = t.code; datalist.appendChild(opt); }); }
+        function applyDeviceMode() { const mode = localStorage.getItem('tonerMode')||'full'; const btnReceive = document.getElementById('btnReceive'), btnOutgoing = document.getElementById('btnOutgoing'); if(mode==='receive'){ btnReceive.style.display=''; btnOutgoing.style.display='none'; } else if(mode==='outgoing'){ btnReceive.style.display='none'; btnOutgoing.style.display=''; } else { btnReceive.style.display=''; btnOutgoing.style.display=''; } }
+        const todayISO = () => new Date().toISOString().slice(0,10);
+        const showToast = (msg,type='success')=>{ const c=document.getElementById('toastContainer'); const t=document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t); setTimeout(()=>t.remove(),2200); };
+
+        // ───────── Barcode scanner ─────────
+        let scannerStream=null,scannerTarget=null,scannerActive=false;
+        window.startScanner = async (targetFieldId) => { scannerTarget=targetFieldId;document.getElementById('scannerModal').style.display='flex';document.getElementById('scannerError').style.display='none';try{scannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});document.getElementById('scannerVideo').srcObject=scannerStream;scannerActive=true;detectBarcodes();}catch(err){document.getElementById('scannerError').textContent='CAMERA NOT AVAILABLE';document.getElementById('scannerError').style.display='block';} };
+        window.stopScanner = () => { scannerActive=false;if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}document.getElementById('scannerVideo').srcObject=null;document.getElementById('scannerModal').style.display='none'; };
+        const detectBarcodes = async () => { if(!scannerActive||!document.getElementById('scannerVideo').videoWidth){if(scannerActive)requestAnimationFrame(detectBarcodes);return;}try{if(!('BarcodeDetector' in window)){document.getElementById('scannerError').textContent='BARCODE DETECTOR NOT SUPPORTED';document.getElementById('scannerError').style.display='block';return;}const detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e']});const barcodes=await detector.detect(document.getElementById('scannerVideo'));if(barcodes.length>0&&scannerActive){const code=barcodes[0].rawValue;const input=document.getElementById(scannerTarget);if(input){input.value=code;if(scannerTarget==='recCode') resolveBarcode(); else if(scannerTarget==='outCode') resolveOutBarcode();}stopScanner();showToast(`SCANNED: ${code}`,'success');return;}}catch(e){}if(scannerActive)requestAnimationFrame(detectBarcodes); };
+
+        // ───────── Init ─────────
+        document.querySelectorAll('#mainTabs .tab').forEach(tab=>{ tab.addEventListener('click',function(){ document.querySelectorAll('#mainTabs .tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); this.classList.add('active'); document.getElementById('panel-'+this.dataset.tab).classList.add('active'); if(this.dataset.tab==='history') renderHistory(); if(this.dataset.tab==='lowstock') renderLowStock(); if(this.dataset.tab==='orders') renderOrders(); }); });
+        ['receiveModal','outgoingModal','orderDetailModal','settingsModal','createOrderModal','aliasModal','scannerModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
+        document.getElementById('recDate').value = todayISO();
+        document.getElementById('outDate').value = todayISO();
+        applyDeviceMode();
     </script>
 </body>
 </html>
