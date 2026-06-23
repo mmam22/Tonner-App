@@ -152,7 +152,7 @@
         </div>
     </div>
 
-    <!-- Modals (unchanged) -->
+    <!-- Modals -->
     <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>RECEIVE TONER</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="recDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="recCode" placeholder="SCAN BARCODE" required oninput="resolveBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('recCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER</label><input type="text" id="recTonerNumber" placeholder="TONER NUMBER" style="text-transform:uppercase;font-weight:700;"></div><div class="form-group"><label>PAINT LINE</label><select id="recLine" required></select></div></div><div class="form-row"><div class="form-group"><label>COLOR</label><input type="text" id="recColor"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="recQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>UNIT COST ($)</label><input type="number" id="recCost" step="0.01" min="0"></div><div class="form-group"><label>SUPPLIER</label><input type="text" id="recSupplier"></div></div><div class="form-row"><div class="form-group"><label>MIN LEVEL</label><input type="number" id="recMin" value="3" min="0"></div><div class="form-group"><label>NOTES</label><input type="text" id="recNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">DONE</button><button type="submit" class="btn btn-green">CONFIRM</button></div></form></div></div>
     <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>OUTGOING TONER</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="outDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="outCode" placeholder="SCAN BARCODE" required list="tonerSuggest" oninput="resolveOutBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('outCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER (AUTO)</label><input type="text" id="outTonerNumber" readonly style="background:#0b1219;font-weight:700;text-transform:uppercase;"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>CUSTOMER</label><input type="text" id="outCustomer"></div><div class="form-group"><label>LINE (AUTO)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.8rem;margin-bottom:10px;display:none;font-weight:700;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">DONE</button><button type="submit" class="btn btn-primary">CONFIRM</button></div></form></div></div>
     <div class="modal-overlay" id="orderDetailModal" style="display:none;"><div class="modal" id="orderDetailContent"></div></div>
@@ -167,17 +167,74 @@
         const firebaseConfig = { apiKey: "AIzaSyAzMfCPalgaZx7chEghiI_-kpIzvLq61BU", authDomain: "toner-track-pro-v2.firebaseapp.com", projectId: "toner-track-pro-v2", storageBucket: "toner-track-pro-v2.firebasestorage.app", messagingSenderId: "96521492059", appId: "1:96521492059:web:c40e09b3a53294246a117e" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-
         const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
         let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
         let deviceMode = localStorage.getItem('tonerMode') || 'full';
         let currentLineFilter = '__ALL__';
         let savingRowOrder = false;
+
+        // Fast‑scan buffer
         let fastScanMode = false;
         let scanBuffer = {};
         let scanFlushTimer = null;
 
-        // Listeners
+        // ---------- FIXED: saveRowOrder (no duplicates, full order merge, filter guard) ----------
+        async function saveRowOrder(evt) {
+            // 1. Guard: only save when ALL items are visible (no filter/search)
+            const totalRows = document.querySelectorAll('#inventoryBody tr[data-code]').length;
+            const totalItems = Object.keys(inventory).length;
+            if (totalRows !== totalItems) {
+                showToast('Clear filters/search before reordering!', 'error');
+                // Revert the drag by re-rendering the table (Sortable will reset its internal state)
+                renderInventory();
+                return;
+            }
+
+            // 2. Get the new visible order from the DOM
+            const visibleCodes = [];
+            document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => {
+                const code = r.getAttribute('data-code');
+                if (code) visibleCodes.push(code);
+            });
+
+            // 3. Start with the current full order (or all codes if incomplete / empty)
+            let fullOrder = [...rowOrder];
+            const allCodes = Object.values(inventory).map(t => t.code);
+            const allSet = new Set(allCodes);
+            const currentSet = new Set(fullOrder);
+            const isComplete = fullOrder.length === allCodes.length && allCodes.every(c => currentSet.has(c));
+            if (!isComplete) {
+                fullOrder = allCodes; // rebuild from scratch
+            }
+
+            // 4. Separate visible and hidden items
+            const visibleSet = new Set(visibleCodes);
+            const hidden = fullOrder.filter(code => !visibleSet.has(code));
+
+            // 5. Find the insertion point (where the visible block was in the original order)
+            let insertIndex = fullOrder.length;
+            for (const code of visibleCodes) {
+                const idx = fullOrder.indexOf(code);
+                if (idx !== -1 && idx < insertIndex) insertIndex = idx;
+            }
+
+            // 6. Build the new full order (no duplicates)
+            const before = hidden.filter((_, idx) => idx < insertIndex);
+            const after = hidden.filter((_, idx) => idx >= insertIndex);
+            const newFullOrder = [...before, ...visibleCodes, ...after];
+
+            // 7. Extra safety: ensure no duplicates
+            const uniqueOrder = [...new Set(newFullOrder)];
+
+            // 8. Save to Firestore
+            rowOrder = uniqueOrder;
+            savingRowOrder = true;
+            await db.collection('settings').doc('config').update({ rowOrder });
+            savingRowOrder = false;
+            showToast('Order saved!', 'success');
+        }
+
+        // ---------- Listener ----------
         db.collection('inventory').onSnapshot(s => { const n = {}; s.forEach(d => n[d.id] = d.data()); inventory = n; if(!editingCell) refreshUI(); });
         db.collection('history').orderBy('timestamp','desc').onSnapshot(s => { history = []; s.forEach(d => history.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
         db.collection('orders').orderBy('createdAt','desc').onSnapshot(s => { ordersList = []; s.forEach(d => ordersList.push({id:d.id,...d.data()})); if(!editingCell) refreshUI(); });
@@ -187,7 +244,23 @@
                 if(data.lines) lines = data.lines;
                 if(data.suppliers) suppliers = data.suppliers;
                 if(data.aliases) aliases = data.aliases;
-                if(data.rowOrder && !savingRowOrder) rowOrder = data.rowOrder;
+                // ★ FIXED: Clean up rowOrder on load – remove duplicates, ensure all codes present
+                let cleanOrder = [];
+                const allCodes = Object.values(inventory).map(t => t.code);
+                if (data.rowOrder && data.rowOrder.length > 0) {
+                    // Remove duplicates and filter out any codes not in inventory
+                    cleanOrder = [...new Set(data.rowOrder)].filter(code => allCodes.includes(code));
+                    // Append any missing codes
+                    const existingSet = new Set(cleanOrder);
+                    allCodes.forEach(code => { if (!existingSet.has(code)) cleanOrder.push(code); });
+                } else {
+                    cleanOrder = allCodes;
+                }
+                // If the cleaned order is different from what's in Firestore, save it once
+                if (JSON.stringify(cleanOrder) !== JSON.stringify(data.rowOrder) || !data.rowOrder) {
+                    db.collection('settings').doc('config').update({ rowOrder: cleanOrder });
+                }
+                rowOrder = cleanOrder;
             } else {
                 db.collection('settings').doc('config').set({lines:DEFAULT_LINES,suppliers:[],aliases:{},rowOrder:[]});
                 lines=[...DEFAULT_LINES]; suppliers=[]; aliases={}; rowOrder=[];
@@ -206,13 +279,6 @@
 
         function getOrderedInventory() { const all = Object.values(inventory); if (!rowOrder || rowOrder.length === 0) return all; const ordered = rowOrder.map(code => inventory[code]).filter(t => t); all.forEach(t => { if (!ordered.find(o => o.code === t.code)) ordered.push(t); }); return ordered; }
 
-        async function saveRowOrder() {
-            rowOrder = [];
-            document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => rowOrder.push(r.getAttribute('data-code')));
-            savingRowOrder = true;
-            try { await db.collection('settings').doc('config').update({ rowOrder }); } catch(e) { showToast('SAVE FAILED: ' + e.message, 'error'); } finally { savingRowOrder = false; }
-        }
-
         function renderInventory() {
             if(editingCell) return;
             const search = (document.getElementById('searchInventory')?.value||'').toUpperCase();
@@ -229,8 +295,19 @@
                 tr.querySelectorAll('.cell-editable').forEach(span => span.addEventListener('click', function(){ startInlineEdit(this); }));
             });
             document.getElementById('quickAddRow').innerHTML = `<tr class="quick-add-row"><td></td><td><select id="qaLine" style="width:100%;padding:6px;border-radius:4px;border:1px dashed var(--accent);background:transparent;color:var(--text);font-size:0.8rem;">${lines.map(l=>`<option value="${l}">${l.toUpperCase()}</option>`).join('')}</select></td><td><input type="text" id="qaBarcode" placeholder="SCAN CODE"></td><td><input type="text" id="qaCode" placeholder="TONER NUMBER"></td><td><input type="text" id="qaSupplier" placeholder="SUPPLIER"></td><td><input type="number" id="qaStock" placeholder="QTY" min="0" value="0"></td><td><input type="number" id="qaMin" placeholder="MIN" min="0" value="3"></td><td><input type="number" id="qaCost" placeholder="COST" step="0.01" min="0"></td><td></td><td></td><td><button class="btn btn-sm btn-green" onclick="quickAddToner()">ADD</button></td></tr>`;
+            // ★ FIXED: Pass event to saveRowOrder
             if (window.Sortable) {
-                new Sortable(tbody, { animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost', forceFallback: true, fallbackOnBody: true, scroll: true, scrollSensitivity: 80, scrollSpeed: 20, onEnd: saveRowOrder });
+                new Sortable(tbody, {
+                    animation: 150,
+                    handle: '.drag-handle',
+                    ghostClass: 'sortable-ghost',
+                    forceFallback: true,
+                    fallbackOnBody: true,
+                    scroll: true,
+                    scrollSensitivity: 80,
+                    scrollSpeed: 20,
+                    onEnd: (evt) => saveRowOrder(evt)
+                });
             }
             updateStats(); updateMiniCards();
         }
@@ -240,14 +317,14 @@
 
         window.quickAddToner = async () => { const code = document.getElementById('qaCode').value.trim().toUpperCase(); if(!code) { showToast('TONER NUMBER REQUIRED','error'); return; } const line = document.getElementById('qaLine').value; const stock = parseInt(document.getElementById('qaStock').value)||0, min = parseInt(document.getElementById('qaMin').value)||3; const cost = parseFloat(document.getElementById('qaCost').value)||0, barcode = (document.getElementById('qaBarcode')?.value?.trim()||'').toUpperCase(); const supplier = (document.getElementById('qaSupplier')?.value?.trim()||'').toUpperCase(); const ref = db.collection('inventory').doc(code); const doc = await ref.get(); if(!doc.exists){ await ref.set({code,color:'',stock,minLevel:min,lastUpdated:todayISO(),line,supplier,cost,totalSpent:cost*stock,barcode:barcode||code}); } else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO(),barcode:barcode||ex.barcode||ex.code}); } document.getElementById('qaCode').value=''; document.getElementById('qaStock').value='0'; document.getElementById('qaCost').value=''; if(document.getElementById('qaBarcode')) document.getElementById('qaBarcode').value=''; if(document.getElementById('qaSupplier')) document.getElementById('qaSupplier').value=''; showToast(`${code} ADDED`,'success'); };
 
-        // History
+        // History inline editing & undo (unchanged)
         function renderHistory() { const search = (document.getElementById('searchHistory')?.value||'').toUpperCase(); const filterType = document.getElementById('filterType')?.value||'all'; const tbody = document.getElementById('historyBody'); tbody.innerHTML = ''; let filtered = history; if (filterType !== 'all') filtered = filtered.filter(h => h.type === filterType); if (search) filtered = filtered.filter(h => h.tonerCode.toUpperCase().includes(search) || (h.customerOrSupplier||'').toUpperCase().includes(search) || (h.line||'').toUpperCase().includes(search)); filtered.slice(0,50).forEach(h => { const tr = document.createElement('tr'); tr.setAttribute('data-id', h.id); tr.setAttribute('data-original-type', h.type); tr.setAttribute('data-original-qty', h.quantity); tr.setAttribute('data-original-cost', h.costPerUnit||0); tr.setAttribute('data-original-code', h.tonerCode); tr.innerHTML = `<td><span class="cell-editable" data-field="date" data-id="${h.id}">${h.date}</span></td><td><span class="cell-editable" data-field="type" data-id="${h.id}" style="font-weight:700;text-transform:uppercase;">${h.type}</span></td><td><span class="cell-editable" data-field="line" data-id="${h.id}">${(h.line||'').toUpperCase()}</span></td><td style="font-weight:700;"><span class="cell-editable" data-field="tonerCode" data-id="${h.id}">${h.tonerCode}</span></td><td><span class="cell-editable" data-field="quantity" data-id="${h.id}">${h.quantity}</span></td><td><span class="cell-editable" data-field="costPerUnit" data-id="${h.id}">$${(h.costPerUnit||0).toFixed(2)}</span></td><td><span class="cell-editable" data-field="customerOrSupplier" data-id="${h.id}">${h.customerOrSupplier||''}</span></td><td><button class="btn btn-sm btn-danger" onclick="undoHistory('${h.id}')">UNDO</button></td>`; tr.querySelectorAll('.cell-editable').forEach(span => span.addEventListener('click', function(){ startHistoryEdit(this); })); tbody.appendChild(tr); }); }
         function startHistoryEdit(span) { if(editingCell) return; const id = span.getAttribute('data-id'); const field = span.getAttribute('data-field'); const row = span.closest('tr'); const originalType = row.getAttribute('data-original-type'); const originalQty = parseInt(row.getAttribute('data-original-qty')) || 0; const originalCost = parseFloat(row.getAttribute('data-original-cost')) || 0; const originalCode = row.getAttribute('data-original-code'); editingCell = { id, field, originalType, originalQty, originalCost, originalCode, row }; const current = span.textContent.replace('$',''); const input = document.createElement('input'); input.type = (field === 'quantity' || field === 'costPerUnit') ? 'number' : 'text'; input.value = current; if (field === 'quantity') { input.min = 1; input.step = 1; } else if (field === 'costPerUnit') { input.step = '0.01'; input.min = '0'; } span.replaceWith(input); input.focus(); input.addEventListener('blur', () => finishHistoryEdit(input)); input.addEventListener('keydown', (e) => { if(e.key === 'Enter') input.blur(); }); }
         async function finishHistoryEdit(input) { const { id, field, originalType, originalQty, originalCost, originalCode, row } = editingCell; const newVal = input.value.trim(); const ref = db.collection('history').doc(id); const docSnap = await ref.get(); if (!docSnap.exists) { editingCell = null; refreshUI(); return; } let updates = {}; if (field === 'date') updates.date = newVal; else if (field === 'type') { if (newVal !== 'in' && newVal !== 'out') { showToast('TYPE MUST BE "in" OR "out"','error'); editingCell = null; renderHistory(); return; } updates.type = newVal; } else if (field === 'line') updates.line = newVal.toUpperCase(); else if (field === 'tonerCode') updates.tonerCode = newVal.toUpperCase(); else if (field === 'quantity') updates.quantity = parseInt(newVal) || 0; else if (field === 'costPerUnit') updates.costPerUnit = parseFloat(newVal) || 0; else if (field === 'customerOrSupplier') updates.customerOrSupplier = newVal; const newType = (field === 'type' ? newVal : originalType); const newQty = (field === 'quantity' ? parseInt(newVal)||0 : originalQty); const newCost = (field === 'costPerUnit' ? parseFloat(newVal)||0 : originalCost); const newCode = (field === 'tonerCode' ? newVal.toUpperCase() : originalCode); if ((field === 'type' || field === 'quantity' || field === 'tonerCode' || field === 'costPerUnit') && (newType !== originalType || newQty !== originalQty || newCode !== originalCode || newCost !== originalCost)) { if (originalType === 'in') { await adjustInventory(originalCode, -originalQty); } else if (originalType === 'out') { await adjustInventory(originalCode, originalQty); } if (newType === 'in') { await adjustInventory(newCode, newQty); } else if (newType === 'out') { await adjustInventory(newCode, -newQty); } } await ref.update(updates); editingCell = null; showToast('History updated','success'); refreshUI(); }
         async function adjustInventory(tonerCode, delta) { if (!tonerCode || delta === 0) return; const ref = db.collection('inventory').doc(tonerCode); const doc = await ref.get(); if (doc.exists) { const data = doc.data(); const newStock = Math.max(0, (data.stock || 0) + delta); await ref.update({ stock: newStock, lastUpdated: todayISO() }); } else { if (delta > 0) { await ref.set({ code: tonerCode, stock: delta, minLevel: 3, lastUpdated: todayISO(), line: lines[0], supplier: '', color: '', cost: 0, totalSpent: 0, barcode: tonerCode }); } } }
         window.undoHistory = async (historyId) => { if (!confirm('UNDO THIS TRANSACTION? THIS WILL REVERSE THE STOCK CHANGE AND DELETE THE RECORD.')) return; const docRef = db.collection('history').doc(historyId); const snap = await docRef.get(); if (!snap.exists) { showToast('History not found','error'); return; } const data = snap.data(); const code = data.tonerCode; const qty = data.quantity || 0; const type = data.type; if (type === 'in') { await adjustInventory(code, -qty); } else if (type === 'out') { await adjustInventory(code, qty); } await docRef.delete(); showToast('Transaction undone','success'); };
 
-        // Fast scan (FIXED)
+        // Fast‑scan (unchanged logic, but lookup fixed to direct inventory[resolved])
         window.toggleFastScan = () => {
             fastScanMode = !fastScanMode;
             document.getElementById('btnFastScan').style.background = fastScanMode ? 'var(--green)' : '';
@@ -292,6 +369,7 @@
             }
         }
 
+        // ★ FIXED: direct lookup using inventory[resolved]
         document.addEventListener('keydown', async (e) => {
             if (!fastScanMode) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
@@ -302,10 +380,9 @@
                 window._scanBuffer.chars = '';
                 if (!barcode || barcode.length < 4) return;
                 const resolved = resolveAlias(barcode);
-                const docRef = db.collection('inventory').doc(resolved);
-                const doc = await docRef.get();
-                if (!doc.exists) { showToast(resolved + ' NOT FOUND','error'); return; }
-                const toner = doc.data();
+                const toner = inventory[resolved];
+                if (!toner) { showToast(barcode + ' NOT FOUND','error'); return; }
+                // docId is the same as resolved (since document IDs are toner codes)
                 if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
                 bufferScan(resolved, resolved, toner);
             } else if (e.key.length === 1) {
@@ -325,7 +402,7 @@
             document.getElementById('outLineDisplay').value = t?.line || '';
         };
 
-        // Original functions (receive, outgoing, orders, settings, charts, etc.) unchanged
+        // ───────── ALL OTHER ORIGINAL FUNCTIONS (unchanged) ─────────
         window.openReceiveModal = () => { document.getElementById('receiveModal').style.display='flex'; document.getElementById('recDate').value=todayISO(); populateLineSelect('recLine'); };
         window.closeReceiveModal = () => document.getElementById('receiveModal').style.display='none';
         window.openOutgoingModal = () => { document.getElementById('outgoingModal').style.display='flex'; document.getElementById('outDate').value=todayISO(); };
