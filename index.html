@@ -169,13 +169,13 @@
         const db = firebase.firestore();
         const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
         let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
-        let deviceMode = localStorage.getItem('tonerMode') || 'full';     
+        let deviceMode = localStorage.getItem('tonerMode') || 'full';
         let currentLineFilter = '__ALL__';
-        let savingRowOrder = false;   // Prevents settings listener from overwriting during drag save
+        let savingRowOrder = false;   // drag-race-flag
 
         // Fast‑scan buffer
         let fastScanMode = false;
-        let scanBuffer = {};          // { tonerCode: { totalQty, docId, toner } }
+        let scanBuffer = {};
         let scanFlushTimer = null;
 
         // Listeners
@@ -215,7 +215,6 @@
             savingRowOrder = true;
             await db.collection('settings').doc('config').update({ rowOrder });
             savingRowOrder = false;
-            // No need to re-render; the DOM is already in the new order
         }
 
         function renderInventory() {
@@ -234,7 +233,6 @@
                 tr.querySelectorAll('.cell-editable').forEach(span => span.addEventListener('click', function(){ startInlineEdit(this); }));
             });
             document.getElementById('quickAddRow').innerHTML = `<tr class="quick-add-row"><td></td><td><select id="qaLine" style="width:100%;padding:6px;border-radius:4px;border:1px dashed var(--accent);background:transparent;color:var(--text);font-size:0.8rem;">${lines.map(l=>`<option value="${l}">${l.toUpperCase()}</option>`).join('')}</select></td><td><input type="text" id="qaBarcode" placeholder="SCAN CODE"></td><td><input type="text" id="qaCode" placeholder="TONER NUMBER"></td><td><input type="text" id="qaSupplier" placeholder="SUPPLIER"></td><td><input type="number" id="qaStock" placeholder="QTY" min="0" value="0"></td><td><input type="number" id="qaMin" placeholder="MIN" min="0" value="3"></td><td><input type="number" id="qaCost" placeholder="COST" step="0.01" min="0"></td><td></td><td></td><td><button class="btn btn-sm btn-green" onclick="quickAddToner()">ADD</button></td></tr>`;
-            // ★ Sortable now supports dragging in both directions
             if (window.Sortable) {
                 new Sortable(tbody, { animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost', forceFallback: true, fallbackOnBody: true, scroll: true, scrollSensitivity: 80, scrollSpeed: 20, onEnd: saveRowOrder });
             }
@@ -246,10 +244,10 @@
 
         window.quickAddToner = async () => { const code = document.getElementById('qaCode').value.trim().toUpperCase(); if(!code) { showToast('TONER NUMBER REQUIRED','error'); return; } const line = document.getElementById('qaLine').value; const stock = parseInt(document.getElementById('qaStock').value)||0, min = parseInt(document.getElementById('qaMin').value)||3; const cost = parseFloat(document.getElementById('qaCost').value)||0, barcode = (document.getElementById('qaBarcode')?.value?.trim()||'').toUpperCase(); const supplier = (document.getElementById('qaSupplier')?.value?.trim()||'').toUpperCase(); const ref = db.collection('inventory').doc(code); const doc = await ref.get(); if(!doc.exists){ await ref.set({code,color:'',stock,minLevel:min,lastUpdated:todayISO(),line,supplier,cost,totalSpent:cost*stock,barcode:barcode||code}); } else { const ex=doc.data(); const ns=(ex.stock||0)+stock; await ref.update({stock:ns,minLevel:min>=0?min:ex.minLevel,line,supplier:supplier||ex.supplier||'',cost:ns>0?((ex.totalSpent||0)+cost*stock)/ns:0,totalSpent:(ex.totalSpent||0)+cost*stock,lastUpdated:todayISO(),barcode:barcode||ex.barcode||ex.code}); } document.getElementById('qaCode').value=''; document.getElementById('qaStock').value='0'; document.getElementById('qaCost').value=''; if(document.getElementById('qaBarcode')) document.getElementById('qaBarcode').value=''; if(document.getElementById('qaSupplier')) document.getElementById('qaSupplier').value=''; showToast(`${code} ADDED`,'success'); };
 
-        // History inline editing & undo (same as your last working version)
+        // History inline editing & undo
         function renderHistory() { const search = (document.getElementById('searchHistory')?.value||'').toUpperCase(); const filterType = document.getElementById('filterType')?.value||'all'; const tbody = document.getElementById('historyBody'); tbody.innerHTML = ''; let filtered = history; if (filterType !== 'all') filtered = filtered.filter(h => h.type === filterType); if (search) filtered = filtered.filter(h => h.tonerCode.toUpperCase().includes(search) || (h.customerOrSupplier||'').toUpperCase().includes(search) || (h.line||'').toUpperCase().includes(search)); filtered.slice(0,50).forEach(h => { const tr = document.createElement('tr'); tr.setAttribute('data-id', h.id); tr.setAttribute('data-original-type', h.type); tr.setAttribute('data-original-qty', h.quantity); tr.setAttribute('data-original-cost', h.costPerUnit||0); tr.setAttribute('data-original-code', h.tonerCode); tr.innerHTML = `<td><span class="cell-editable" data-field="date" data-id="${h.id}">${h.date}</span></td><td><span class="cell-editable" data-field="type" data-id="${h.id}" style="font-weight:700;text-transform:uppercase;">${h.type}</span></td><td><span class="cell-editable" data-field="line" data-id="${h.id}">${(h.line||'').toUpperCase()}</span></td><td style="font-weight:700;"><span class="cell-editable" data-field="tonerCode" data-id="${h.id}">${h.tonerCode}</span></td><td><span class="cell-editable" data-field="quantity" data-id="${h.id}">${h.quantity}</span></td><td><span class="cell-editable" data-field="costPerUnit" data-id="${h.id}">$${(h.costPerUnit||0).toFixed(2)}</span></td><td><span class="cell-editable" data-field="customerOrSupplier" data-id="${h.id}">${h.customerOrSupplier||''}</span></td><td><button class="btn btn-sm btn-danger" onclick="undoHistory('${h.id}')">UNDO</button></td>`; tr.querySelectorAll('.cell-editable').forEach(span => span.addEventListener('click', function(){ startHistoryEdit(this); })); tbody.appendChild(tr); }); }
         function startHistoryEdit(span) { if(editingCell) return; const id = span.getAttribute('data-id'); const field = span.getAttribute('data-field'); const row = span.closest('tr'); const originalType = row.getAttribute('data-original-type'); const originalQty = parseInt(row.getAttribute('data-original-qty')) || 0; const originalCost = parseFloat(row.getAttribute('data-original-cost')) || 0; const originalCode = row.getAttribute('data-original-code'); editingCell = { id, field, originalType, originalQty, originalCost, originalCode, row }; const current = span.textContent.replace('$',''); const input = document.createElement('input'); input.type = (field === 'quantity' || field === 'costPerUnit') ? 'number' : 'text'; input.value = current; if (field === 'quantity') { input.min = 1; input.step = 1; } else if (field === 'costPerUnit') { input.step = '0.01'; input.min = '0'; } span.replaceWith(input); input.focus(); input.addEventListener('blur', () => finishHistoryEdit(input)); input.addEventListener('keydown', (e) => { if(e.key === 'Enter') input.blur(); }); }
-        async function finishHistoryEdit(input) { /* … unchanged … */ const { id, field, originalType, originalQty, originalCost, originalCode, row } = editingCell; const newVal = input.value.trim(); const ref = db.collection('history').doc(id); const docSnap = await ref.get(); if (!docSnap.exists) { editingCell = null; refreshUI(); return; } let updates = {}; if (field === 'date') updates.date = newVal; else if (field === 'type') { if (newVal !== 'in' && newVal !== 'out') { showToast('TYPE MUST BE "in" OR "out"','error'); editingCell = null; renderHistory(); return; } updates.type = newVal; } else if (field === 'line') updates.line = newVal.toUpperCase(); else if (field === 'tonerCode') updates.tonerCode = newVal.toUpperCase(); else if (field === 'quantity') updates.quantity = parseInt(newVal) || 0; else if (field === 'costPerUnit') updates.costPerUnit = parseFloat(newVal) || 0; else if (field === 'customerOrSupplier') updates.customerOrSupplier = newVal; const newType = (field === 'type' ? newVal : originalType); const newQty = (field === 'quantity' ? parseInt(newVal)||0 : originalQty); const newCost = (field === 'costPerUnit' ? parseFloat(newVal)||0 : originalCost); const newCode = (field === 'tonerCode' ? newVal.toUpperCase() : originalCode); if ((field === 'type' || field === 'quantity' || field === 'tonerCode' || field === 'costPerUnit') && (newType !== originalType || newQty !== originalQty || newCode !== originalCode || newCost !== originalCost)) { if (originalType === 'in') { await adjustInventory(originalCode, -originalQty); } else if (originalType === 'out') { await adjustInventory(originalCode, originalQty); } if (newType === 'in') { await adjustInventory(newCode, newQty); } else if (newType === 'out') { await adjustInventory(newCode, -newQty); } } await ref.update(updates); editingCell = null; showToast('History updated','success'); refreshUI(); }
+        async function finishHistoryEdit(input) { const { id, field, originalType, originalQty, originalCost, originalCode, row } = editingCell; const newVal = input.value.trim(); const ref = db.collection('history').doc(id); const docSnap = await ref.get(); if (!docSnap.exists) { editingCell = null; refreshUI(); return; } let updates = {}; if (field === 'date') updates.date = newVal; else if (field === 'type') { if (newVal !== 'in' && newVal !== 'out') { showToast('TYPE MUST BE "in" OR "out"','error'); editingCell = null; renderHistory(); return; } updates.type = newVal; } else if (field === 'line') updates.line = newVal.toUpperCase(); else if (field === 'tonerCode') updates.tonerCode = newVal.toUpperCase(); else if (field === 'quantity') updates.quantity = parseInt(newVal) || 0; else if (field === 'costPerUnit') updates.costPerUnit = parseFloat(newVal) || 0; else if (field === 'customerOrSupplier') updates.customerOrSupplier = newVal; const newType = (field === 'type' ? newVal : originalType); const newQty = (field === 'quantity' ? parseInt(newVal)||0 : originalQty); const newCost = (field === 'costPerUnit' ? parseFloat(newVal)||0 : originalCost); const newCode = (field === 'tonerCode' ? newVal.toUpperCase() : originalCode); if ((field === 'type' || field === 'quantity' || field === 'tonerCode' || field === 'costPerUnit') && (newType !== originalType || newQty !== originalQty || newCode !== originalCode || newCost !== originalCost)) { if (originalType === 'in') { await adjustInventory(originalCode, -originalQty); } else if (originalType === 'out') { await adjustInventory(originalCode, originalQty); } if (newType === 'in') { await adjustInventory(newCode, newQty); } else if (newType === 'out') { await adjustInventory(newCode, -newQty); } } await ref.update(updates); editingCell = null; showToast('History updated','success'); refreshUI(); }
         async function adjustInventory(tonerCode, delta) { if (!tonerCode || delta === 0) return; const ref = db.collection('inventory').doc(tonerCode); const doc = await ref.get(); if (doc.exists) { const data = doc.data(); const newStock = Math.max(0, (data.stock || 0) + delta); await ref.update({ stock: newStock, lastUpdated: todayISO() }); } else { if (delta > 0) { await ref.set({ code: tonerCode, stock: delta, minLevel: 3, lastUpdated: todayISO(), line: lines[0], supplier: '', color: '', cost: 0, totalSpent: 0, barcode: tonerCode }); } } }
         window.undoHistory = async (historyId) => { if (!confirm('UNDO THIS TRANSACTION? THIS WILL REVERSE THE STOCK CHANGE AND DELETE THE RECORD.')) return; const docRef = db.collection('history').doc(historyId); const snap = await docRef.get(); if (!snap.exists) { showToast('History not found','error'); return; } const data = snap.data(); const code = data.tonerCode; const qty = data.quantity || 0; const type = data.type; if (type === 'in') { await adjustInventory(code, -qty); } else if (type === 'out') { await adjustInventory(code, qty); } await docRef.delete(); showToast('Transaction undone','success'); };
 
@@ -268,9 +266,7 @@
         };
 
         function bufferScan(code, docId, toner) {
-            if (!scanBuffer[code]) {
-                scanBuffer[code] = { totalQty: 0, docId, toner };
-            }
+            if (!scanBuffer[code]) { scanBuffer[code] = { totalQty: 0, docId, toner }; }
             scanBuffer[code].totalQty += 1;
             const newStock = Math.max(0, toner.stock - scanBuffer[code].totalQty);
             db.collection('inventory').doc(docId).update({ stock: newStock, lastUpdated: todayISO() });
@@ -301,27 +297,27 @@
         }
 
         document.addEventListener('keydown', async (e) => {
-    if (!fastScanMode) return;
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-    if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
-    clearTimeout(window._scanBuffer.timer);
-    if (e.key === 'Enter') {
-        const barcode = window._scanBuffer.chars.trim().toUpperCase();
-        window._scanBuffer.chars = '';
-        if (!barcode || barcode.length < 4) return;
-        const resolved = resolveAlias(barcode);
-        const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === resolved);
-        if (!tonerEntry) { showToast(barcode + ' NOT FOUND','error'); return; }
-        const [docId, toner] = tonerEntry;
-        if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
-        bufferScan(resolved, docId, toner);   // ★ only this line – no history.add here
-    } else if (e.key.length === 1) {
-        window._scanBuffer.chars += e.key;
-        window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
-    }
+            if (!fastScanMode) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
+            clearTimeout(window._scanBuffer.timer);
+            if (e.key === 'Enter') {
+                const barcode = window._scanBuffer.chars.trim().toUpperCase();
+                window._scanBuffer.chars = '';
+                if (!barcode || barcode.length < 4) return;
+                const resolved = resolveAlias(barcode);
+                const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === resolved);
+                if (!tonerEntry) { showToast(barcode + ' NOT FOUND','error'); return; }
+                const [docId, toner] = tonerEntry;
+                if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
+                bufferScan(resolved, docId, toner);
+            } else if (e.key.length === 1) {
+                window._scanBuffer.chars += e.key;
+                window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
+            }
+        });
 
-            
-         window.quickOutgoing = (code) => {
+        window.quickOutgoing = (code) => {
             const tonerEntry = Object.entries(inventory).find(([id, t]) => t.code === code);
             if (!tonerEntry) return;
             const [docId, t] = tonerEntry;
