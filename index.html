@@ -31,6 +31,7 @@
         .btn-outline:hover,.btn-outline:active { background:var(--surface2); }
         .btn-sm { padding:6px 10px; font-size:0.7rem; border-radius:6px; }
         .btn-green { background:var(--green); color:#000; border-color:var(--green); }
+        .btn-danger { background:#e74c3c; color:#fff; border-color:#e74c3c; }
         .container { max-width:1300px; margin:0 auto; padding:20px 20px 100px; }
         .stat-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
         .stat-card { background:var(--surface); border-radius:var(--radius); padding:18px; border:1px solid var(--border); box-shadow:var(--shadow); cursor:pointer; transition:all 0.2s; }
@@ -142,7 +143,6 @@
     <div class="modal-overlay" id="receiveModal" style="display:none;"><div class="modal"><h3>RECEIVE TONER</h3><form onsubmit="handleReceive(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="recDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="recCode" placeholder="SCAN BARCODE" required oninput="resolveBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('recCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER</label><input type="text" id="recTonerNumber" placeholder="TONER NUMBER" style="text-transform:uppercase;font-weight:700;"></div><div class="form-group"><label>PAINT LINE</label><select id="recLine" required></select></div></div><div class="form-row"><div class="form-group"><label>COLOR</label><input type="text" id="recColor"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="recQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>UNIT COST ($)</label><input type="number" id="recCost" step="0.01" min="0"></div><div class="form-group"><label>SUPPLIER</label><input type="text" id="recSupplier"></div></div><div class="form-row"><div class="form-group"><label>MIN LEVEL</label><input type="number" id="recMin" value="3" min="0"></div><div class="form-group"><label>NOTES</label><input type="text" id="recNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeReceiveModal()">DONE</button><button type="submit" class="btn btn-green">CONFIRM</button></div></form></div></div>
     <div class="modal-overlay" id="outgoingModal" style="display:none;"><div class="modal"><h3>OUTGOING TONER</h3><form onsubmit="handleOutgoing(event)"><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="outDate" required></div><div class="form-group"><label>SCAN CODE</label><div style="display:flex;gap:6px;"><input type="text" id="outCode" placeholder="SCAN BARCODE" required list="tonerSuggest" oninput="resolveOutBarcode()" style="flex:1;text-transform:uppercase;font-weight:700;"><button type="button" class="btn btn-sm btn-outline" onclick="startScanner('outCode')">SCAN</button></div></div></div><div class="form-row"><div class="form-group"><label>TONER NUMBER (AUTO)</label><input type="text" id="outTonerNumber" readonly style="background:#0b1219;font-weight:700;text-transform:uppercase;"></div><div class="form-group"><label>QUANTITY</label><input type="number" id="outQty" value="1" min="1"></div></div><div class="form-row"><div class="form-group"><label>CUSTOMER</label><input type="text" id="outCustomer"></div><div class="form-group"><label>LINE (AUTO)</label><input type="text" id="outLineDisplay" readonly style="background:#0b1219;"></div></div><div id="outWarning" style="color:var(--orange);font-size:0.8rem;margin-bottom:10px;display:none;font-weight:700;"></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeOutgoingModal()">DONE</button><button type="submit" class="btn btn-primary">CONFIRM</button></div></form></div></div>
     <div class="modal-overlay" id="orderDetailModal" style="display:none;"><div class="modal" id="orderDetailContent"></div></div>
-    <div class="modal-overlay" id="editHistoryModal" style="display:none;"><div class="modal"><h3>EDIT OUTGOING</h3><form onsubmit="handleEditHistory(event)"><input type="hidden" id="editHistId"><div class="form-group"><label>TONER NUMBER</label><input type="text" id="editHistCode" readonly style="background:#0b1219;"></div><div class="form-row"><div class="form-group"><label>DATE</label><input type="date" id="editHistDate" required></div><div class="form-group"><label>QUANTITY</label><input type="number" id="editHistQty" min="1" required></div></div><div class="form-row"><div class="form-group"><label>CUSTOMER</label><input type="text" id="editHistCustomer"></div><div class="form-group"><label>NOTES</label><input type="text" id="editHistNotes"></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;"><button type="button" class="btn btn-outline" onclick="closeEditHistoryModal()">CANCEL</button><button type="submit" class="btn btn-green">SAVE</button></div></form></div></div>
     <div class="modal-overlay" id="settingsModal" style="display:none;"><div class="modal"><h3>SETTINGS</h3><h4>PAINT LINES</h4><div id="lineSettingsFields"></div><button class="btn btn-sm btn-outline" id="addLineBtn" style="margin-top:6px;">ADD LINE</button><h4 style="margin-top:20px;">SUPPLIERS</h4><div id="supplierList"></div><button class="btn btn-sm btn-outline" id="addSupplierBtn" style="margin-top:6px;">ADD SUPPLIER</button><h4 style="margin-top:20px;">DEVICE MODE</h4><select id="deviceMode" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;"><option value="full">FULL</option><option value="receive">RECEIVE ONLY</option><option value="outgoing">OUTGOING ONLY</option></select><div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeSettingsModal()">CANCEL</button><button class="btn btn-green" onclick="saveAllSettings()">SAVE ALL</button></div></div></div>
     <div class="modal-overlay" id="createOrderModal" style="display:none;"><div class="modal"><h3>NEW ORDER</h3><form onsubmit="createOrder(event)"><div class="form-row"><div class="form-group"><label>SUPPLIER</label><select id="orderSupplier" required></select></div><div class="form-group"><label>EXPECTED DELIVERY</label><input type="date" id="orderDelivery" required></div></div><div class="form-group"><label>NOTES / PO</label><input type="text" id="orderNotes"><h4>ITEMS</h4><div id="orderItems"></div><button type="button" class="btn btn-sm btn-outline" onclick="addOrderItem()">ADD ITEM</button></div><div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-outline" onclick="closeCreateOrderModal()">CANCEL</button><button type="submit" class="btn btn-green">CREATE</button></div></form></div></div>
     <div class="modal-overlay" id="aliasModal" style="display:none;"><div class="modal"><h3>BARCODE ALIASES</h3><p style="font-size:0.8rem;margin-bottom:12px;color:var(--text2);">MAP SCANNER BARCODES TO YOUR INTERNAL TONER NUMBERS.</p><div id="aliasList"></div><button class="btn btn-sm btn-outline" id="addAliasBtn" style="margin-top:8px;">ADD ALIAS</button><button class="btn btn-sm btn-outline" onclick="learnAliasesFromInventory()" style="margin-left:8px;">LEARN FROM INVENTORY</button><div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn btn-outline" onclick="closeAliasModal()">CANCEL</button><button class="btn btn-green" onclick="saveAliases()">SAVE</button></div></div></div>
@@ -187,7 +187,7 @@
 
         function getOrderedInventory() { const all = Object.values(inventory); if (!rowOrder || rowOrder.length === 0) return all; const ordered = rowOrder.map(code => inventory[code]).filter(t => t); all.forEach(t => { if (!ordered.find(o => o.code === t.code)) ordered.push(t); }); return ordered; }
 
-        // ★ FIXED: saveRowOrder - always saves the current table order
+        // FIX: saveRowOrder - always saves the current table order
         async function saveRowOrder() {
             const newOrder = [];
             document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => {
@@ -247,11 +247,77 @@
         window.receiveAllOrder = async (orderId) => { if (!confirm('RECEIVE ALL REMAINING ITEMS IN THIS ORDER?')) return; const ord = ordersList.find(o => o.id === orderId); if (!ord) return; for (const item of ord.items) { const remaining = item.quantityOrdered - item.quantityReceived; if (remaining > 0) { await receiveTonerDirect(item.tonerCode, item.color, remaining, ord.supplier, `ORDER: ${ord.notes||orderId}`, todayISO(), item.line); item.quantityReceived = item.quantityOrdered; } } await db.collection('orders').doc(orderId).update({ items: ord.items, status: 'complete', updatedAt: Date.now() }); showToast('ORDER FULLY RECEIVED!','success'); closeOrderDetail(); };
         async function receiveTonerDirect(code, color, qty, supplier, notes, date, line) { const ref = db.collection('inventory').doc(code); const doc = await ref.get(); if(!doc.exists){ await ref.set({code,color:color||'N/A',stock:qty,minLevel:3,lastUpdated:date,line,supplier,cost:0,totalSpent:0}); } else { const ex=doc.data(); await ref.update({stock:(ex.stock||0)+qty,lastUpdated:date,line:line||ex.line,supplier:supplier||ex.supplier||''}); } await db.collection('history').add({date,type:'in',tonerCode:code,quantity:qty,customerOrSupplier:supplier||'N/A',line,costPerUnit:0,timestamp:Date.now()}); }
 
-        function renderHistory() { const tbody = document.getElementById('historyBody'); tbody.innerHTML = ''; history.slice(0,100).forEach(h => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${h.date}</td><td style="font-weight:700;">${h.type.toUpperCase()}</td><td>${(h.line||'').toUpperCase()}</td><td style="font-weight:700;">${h.tonerCode}</td><td>${h.quantity}</td><td>$${(h.costPerUnit||0).toFixed(2)}</td><td>${h.customerOrSupplier||''}</td><td>${h.type==='out'?`<button class="btn btn-sm btn-outline" onclick="editHistory('${h.id}')">✏️</button> `:''}</td>`; tbody.appendChild(tr); }); }
+        // ★ FIX 1: UNDO HISTORY FUNCTION
+        window.undoHistory = async (historyId) => {
+            if (!confirm('UNDO THIS TRANSACTION? THIS WILL REVERSE THE STOCK CHANGE AND DELETE THE RECORD.')) return;
+            
+            const docRef = db.collection('history').doc(historyId);
+            const snap = await docRef.get();
+            
+            if (!snap.exists) {
+                showToast('History not found', 'error');
+                return;
+            }
+            
+            const data = snap.data();
+            const code = data.tonerCode;
+            const qty = data.quantity || 0;
+            const type = data.type;
+            
+            // Reverse the stock change
+            const ref = db.collection('inventory').doc(code);
+            const doc = await ref.get();
+            
+            if (doc.exists) {
+                const current = doc.data().stock || 0;
+                if (type === 'in') {
+                    // Remove the received items
+                    await ref.update({ 
+                        stock: Math.max(0, current - qty),
+                        lastUpdated: todayISO()
+                    });
+                } else if (type === 'out') {
+                    // Add back the shipped items
+                    await ref.update({ 
+                        stock: current + qty,
+                        lastUpdated: todayISO()
+                    });
+                }
+            }
+            
+            // Delete the history record
+            await docRef.delete();
+            showToast('Transaction undone', 'success');
+        };
 
-        window.editHistory = (txId) => { const tx = history.find(h => h.id === txId); if (!tx || tx.type !== 'out') return; document.getElementById('editHistoryModal').style.display = 'flex'; document.getElementById('editHistId').value = tx.id; document.getElementById('editHistCode').value = tx.tonerCode; document.getElementById('editHistDate').value = tx.date; document.getElementById('editHistQty').value = tx.quantity; document.getElementById('editHistCustomer').value = tx.customerOrSupplier || ''; document.getElementById('editHistNotes').value = tx.notes || ''; };
-        window.closeEditHistoryModal = () => { document.getElementById('editHistoryModal').style.display = 'none'; };
-        window.handleEditHistory = async (e) => { e.preventDefault(); const txId = document.getElementById('editHistId').value; const newQty = parseInt(document.getElementById('editHistQty').value); const newDate = document.getElementById('editHistDate').value; const newCustomer = document.getElementById('editHistCustomer').value; const newNotes = document.getElementById('editHistNotes').value; const tx = history.find(h => h.id === txId); if (!tx) return; const qtyDiff = newQty - tx.quantity; const ref = db.collection('inventory').doc(tx.tonerCode); const doc = await ref.get(); if (doc.exists) { const t = doc.data(); const newStock = t.stock - qtyDiff; if (newStock < 0) { showToast('NOT ENOUGH STOCK','error'); return; } await ref.update({ stock: newStock, lastUpdated: todayISO() }); } await db.collection('history').doc(txId).update({ quantity: newQty, date: newDate, customerOrSupplier: newCustomer, notes: newNotes }); closeEditHistoryModal(); showToast('OUTGOING UPDATED','success'); };
+        // ★ FIX 2: RENDER HISTORY WITH UNDO BUTTON
+        function renderHistory() { 
+            const search = (document.getElementById('searchHistory')?.value||'').toUpperCase(); 
+            const filterType = document.getElementById('filterType')?.value||'all'; 
+            const tbody = document.getElementById('historyBody'); 
+            tbody.innerHTML = ''; 
+            
+            let filtered = history; 
+            if (filterType !== 'all') filtered = filtered.filter(h => h.type === filterType); 
+            if (search) filtered = filtered.filter(h => h.tonerCode.toUpperCase().includes(search) || (h.customerOrSupplier||'').toUpperCase().includes(search) || (h.line||'').toUpperCase().includes(search)); 
+            
+            filtered.slice(0,100).forEach(h => { 
+                const tr = document.createElement('tr'); 
+                tr.innerHTML = `
+                    <td>${h.date}</td>
+                    <td style="font-weight:700;text-transform:uppercase;">${h.type}</td>
+                    <td>${(h.line||'').toUpperCase()}</td>
+                    <td style="font-weight:700;">${h.tonerCode}</td>
+                    <td>${h.quantity}</td>
+                    <td>$${(h.costPerUnit||0).toFixed(2)}</td>
+                    <td>${h.customerOrSupplier||''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="undoHistory('${h.id}')">UNDO</button>
+                    </td>
+                `; 
+                tbody.appendChild(tr); 
+            }); 
+        }
 
         function renderLowStock() { const low = Object.values(inventory).filter(t=>t.stock<t.minLevel); const tbody = document.getElementById('lowStockBody'); tbody.innerHTML = ''; low.forEach(t => { const tr = document.createElement('tr'); tr.innerHTML = `<td>${(t.line||'').toUpperCase()}</td><td style="font-weight:700;">${t.code}</td><td>${t.color}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.minLevel-t.stock}</td>`; tbody.appendChild(tr); }); }
 
@@ -272,40 +338,81 @@
         window.quickOutgoing = (code) => { const t = inventory[code]; if (!t) return; document.getElementById('outgoingModal').style.display = 'flex'; document.getElementById('outCode').value = t.barcode || code; document.getElementById('outTonerNumber').value = t.code; document.getElementById('outDate').value = todayISO(); document.getElementById('outLineDisplay').value = t.line || ''; };
 
         let fastScanMode = false;
-        window.toggleFastScan = () => { fastScanMode = !fastScanMode; document.getElementById('btnFastScan').style.background = fastScanMode ? 'var(--green)' : ''; document.getElementById('btnFastScan').textContent = fastScanMode ? 'SCAN MODE ON' : 'FAST SCAN'; showToast(fastScanMode ? 'FAST SCAN MODE ON' : 'FAST SCAN MODE OFF', 'success'); };
+        let lastScannedCode = null;
+        let lastScannedTime = 0;
 
-        // ★ FIXED: Fast-scan now creates history immediately
+        window.toggleFastScan = () => { 
+            fastScanMode = !fastScanMode; 
+            document.getElementById('btnFastScan').style.background = fastScanMode ? 'var(--green)' : ''; 
+            document.getElementById('btnFastScan').textContent = fastScanMode ? 'SCAN MODE ON' : 'FAST SCAN'; 
+            showToast(fastScanMode ? 'FAST SCAN MODE ON' : 'FAST SCAN MODE OFF', 'success'); 
+        };
+
+        // ★ FIX 3: FAST SCAN WITH MERGE LOGIC
         document.addEventListener('keydown', async (e) => {
             if (!fastScanMode) return;
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            
             if (!window._scanBuffer) window._scanBuffer = { chars: '', timer: null };
             clearTimeout(window._scanBuffer.timer);
+            
             if (e.key === 'Enter') {
                 const barcode = window._scanBuffer.chars.trim().toUpperCase();
                 window._scanBuffer.chars = '';
                 if (!barcode || barcode.length < 4) return;
+                
                 const resolved = resolveAlias(barcode);
                 const toner = inventory[resolved];
-                if (!toner) { showToast(barcode + ' NOT FOUND','error'); return; }
-                if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK','error'); return; }
+                if (!toner) { showToast(barcode + ' NOT FOUND', 'error'); return; }
+                if (toner.stock < 1) { showToast(toner.code + ' OUT OF STOCK', 'error'); return; }
                 
-                // ★ IMMEDIATELY create history record
-                await db.collection('inventory').doc(resolved).update({ 
-                    stock: toner.stock - 1, 
-                    lastUpdated: todayISO() 
-                });
-                await db.collection('history').add({
-                    date: todayISO(),
-                    type: 'out',
-                    tonerCode: resolved,
-                    quantity: 1,
-                    customerOrSupplier: 'FAST SCAN',
-                    line: toner.line || '',
-                    costPerUnit: toner.cost || 0,
-                    timestamp: Date.now()
-                });
-                playAlertChime();
-                showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
+                const now = Date.now();
+                
+                // ★ Check for existing recent history record
+                const existingHistory = history.find(h => 
+                    h.tonerCode === resolved && 
+                    h.type === 'out' && 
+                    h.customerOrSupplier === 'FAST SCAN' &&
+                    (now - h.timestamp) < 5000
+                );
+                
+                if (existingHistory) {
+                    // ★ UPDATE existing history record
+                    const newQty = existingHistory.quantity + 1;
+                    await db.collection('history').doc(existingHistory.id).update({
+                        quantity: newQty,
+                        timestamp: now
+                    });
+                    await db.collection('inventory').doc(resolved).update({
+                        stock: toner.stock - 1,
+                        lastUpdated: todayISO()
+                    });
+                    playAlertChime();
+                    showNotification('FAST SCAN', `${newQty} ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
+                } else {
+                    // ★ CREATE new history record
+                    await db.collection('inventory').doc(resolved).update({
+                        stock: toner.stock - 1,
+                        lastUpdated: todayISO()
+                    });
+                    await db.collection('history').add({
+                        date: todayISO(),
+                        type: 'out',
+                        tonerCode: resolved,
+                        quantity: 1,
+                        customerOrSupplier: 'FAST SCAN',
+                        line: toner.line || '',
+                        costPerUnit: toner.cost || 0,
+                        timestamp: now
+                    });
+                    playAlertChime();
+                    showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${toner.stock - 1} LEFT.`, 'out');
+                }
+                
+                // Update last scanned info
+                lastScannedCode = resolved;
+                lastScannedTime = now;
+                
             } else if (e.key.length === 1) {
                 window._scanBuffer.chars += e.key;
                 window._scanBuffer.timer = setTimeout(() => { window._scanBuffer.chars = ''; }, 100);
@@ -374,7 +481,7 @@
         const detectBarcodes = async () => { if(!scannerActive||!document.getElementById('scannerVideo').videoWidth){if(scannerActive)requestAnimationFrame(detectBarcodes);return;}try{if(!('BarcodeDetector' in window)){document.getElementById('scannerError').textContent='BARCODE DETECTOR NOT SUPPORTED';document.getElementById('scannerError').style.display='block';return;}const detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e']});const barcodes=await detector.detect(document.getElementById('scannerVideo'));if(barcodes.length>0&&scannerActive){const code=barcodes[0].rawValue;const input=document.getElementById(scannerTarget);if(input){input.value=code;if(scannerTarget==='recCode') resolveBarcode(); else if(scannerTarget==='outCode') resolveOutBarcode();}stopScanner();showToast(`SCANNED: ${code}`,'success');return;}}catch(e){}if(scannerActive)requestAnimationFrame(detectBarcodes); };
 
         document.querySelectorAll('#mainTabs .tab').forEach(tab=>{ tab.addEventListener('click',function(){ document.querySelectorAll('#mainTabs .tab').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active')); this.classList.add('active'); document.getElementById('panel-'+this.dataset.tab).classList.add('active'); if(this.dataset.tab==='history') renderHistory(); if(this.dataset.tab==='lowstock') renderLowStock(); if(this.dataset.tab==='orders') renderOrders(); }); });
-        ['receiveModal','outgoingModal','orderDetailModal','settingsModal','createOrderModal','aliasModal','scannerModal','editHistoryModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
+        ['receiveModal','outgoingModal','orderDetailModal','settingsModal','createOrderModal','aliasModal','scannerModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click',function(e){ if(e.target===el) el.style.display='none'; }); });
         document.getElementById('recDate').value = todayISO();
         document.getElementById('outDate').value = todayISO();
         applyDeviceMode();
