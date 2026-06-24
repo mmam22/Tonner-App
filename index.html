@@ -123,8 +123,8 @@
         <button class="btn btn-sm btn-outline" onclick="openSettingsModal()">SETTINGS</button>
     </div>
 </header>
-    <div id="micButtonContainer" style="position:fixed;bottom:24px;right:24px;z-index:500;display:none;">
-  <button id="micButton" onclick="startVoiceCommand()" style="width:60px;height:60px;border-radius:50%;background:var(--accent);color:#000;font-size:1.5rem;border:none;box-shadow:0 4px 20px rgba(0,0,0,0.6);cursor:pointer;">🎙️</button>
+<div id="micButtonContainer" style="position:fixed;bottom:24px;right:24px;z-index:500;display:none;">
+    <button id="micButton" onclick="startVoiceCommand()" style="width:60px;height:60px;border-radius:50%;background:var(--accent);color:#000;font-size:1.5rem;border:none;box-shadow:0 4px 20px rgba(0,0,0,0.6);cursor:pointer;">🎙️</button>
 </div>
 <div class="container">
     <div class="stat-row" id="statRow"></div>
@@ -349,7 +349,7 @@
     let currentLineFilter = '__ALL__';
     let fastScanMode = false;
 
-    // Fast-scan merge buffer: key = tonerCode, value = { historyDocId, quantity, timestamp, timer }
+    // Fast-scan merge buffer
     const scanBuffer = {};
 
     // --- Firestore Listeners ---
@@ -536,7 +536,7 @@
         } catch (err) {
             showToast('❌ Save failed', 'error');
             console.error(err);
-            refreshUI(); // revert UI to server state
+            refreshUI();
         }
     }
 
@@ -685,7 +685,7 @@
         document.getElementById('outCode').value = ''; document.getElementById('outTonerNumber').value = ''; document.getElementById('outQty').value = '1'; document.getElementById('outCode').focus();
     };
 
-    // --- Fast Scan (fixed merge with buffer) ---
+    // --- Fast Scan (with merge and remaining stock) ---
     window.toggleFastScan = () => {
         fastScanMode = !fastScanMode;
         document.getElementById('btnFastScan').style.background = fastScanMode ? 'var(--green)' : '';
@@ -713,13 +713,14 @@
             const bufferEntry = scanBuffer[resolved];
 
             if (bufferEntry && (now - bufferEntry.timestamp) < 5000) {
-                // Merge: update existing history doc and decrement stock
+                // Merge
                 clearTimeout(bufferEntry.timer);
                 bufferEntry.quantity += 1;
                 bufferEntry.timestamp = now;
                 await db.collection('history').doc(bufferEntry.historyDocId).update({ quantity: bufferEntry.quantity, timestamp: now });
                 await db.collection('inventory').doc(resolved).update({ stock: firebase.firestore.FieldValue.increment(-1), lastUpdated: todayISO() });
-                showNotification('FAST SCAN', `${bufferEntry.quantity} ${resolved} SHIPPED.`, 'out');
+                const remaining = toner.stock - bufferEntry.quantity;
+                showNotification('FAST SCAN', `${bufferEntry.quantity} ${resolved} SHIPPED. ${remaining} LEFT.`, 'out');
                 playAlertChime();
                 bufferEntry.timer = setTimeout(() => delete scanBuffer[resolved], 5000);
             } else {
@@ -731,7 +732,8 @@
                 await db.collection('inventory').doc(resolved).update({ stock: firebase.firestore.FieldValue.increment(-1), lastUpdated: todayISO() });
                 const timer = setTimeout(() => delete scanBuffer[resolved], 5000);
                 scanBuffer[resolved] = { historyDocId: historyRef.id, quantity: 1, timestamp: now, timer };
-                showNotification('FAST SCAN', `1 ${resolved} SHIPPED.`, 'out');
+                const remaining = toner.stock - 1;
+                showNotification('FAST SCAN', `1 ${resolved} SHIPPED. ${remaining} LEFT.`, 'out');
                 playAlertChime();
             }
         } else if (e.key.length === 1) {
@@ -740,7 +742,7 @@
         }
     });
 
-    // --- History Edit (new feature) ---
+    // --- History Edit ---
     window.editHistory = (historyId, oldQty, oldDate, oldCustomer, oldType, tonerCode) => {
         const row = document.getElementById(`history-row-${historyId}`);
         if (!row) return;
@@ -783,7 +785,6 @@
         renderHistory();
     };
 
-    // --- History rendering with edit button ---
     function renderHistory() {
         const search = (document.getElementById('searchHistory')?.value||'').toUpperCase();
         const filterType = document.getElementById('filterType')?.value||'all';
@@ -809,7 +810,6 @@
         });
     }
 
-    // --- Undo (basic stock reversal) ---
     window.undoHistory = async (historyId) => {
         if (!confirm('UNDO THIS TRANSACTION? THIS WILL REVERSE THE STOCK CHANGE AND DELETE THE RECORD.')) return;
         const docRef = db.collection('history').doc(historyId);
@@ -827,7 +827,7 @@
         showToast('Transaction undone', 'success');
     };
 
-    // --- Low Stock rendering (added) ---
+    // --- Low Stock rendering ---
     function renderLowStock() {
         const low = Object.values(inventory).filter(t => t.stock < t.minLevel);
         const tbody = document.getElementById('lowStockBody'); tbody.innerHTML = '';
@@ -838,7 +838,7 @@
         });
     }
 
-    // --- Charts with fallback ---
+    // --- Charts ---
     function drawBarChart() {
         const canvas = document.getElementById('barChart'); if(!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -923,7 +923,7 @@
         else { btnReceive.style.display=''; btnOutgoing.style.display=''; }
     }
 
-    // --- Orders, modals, settings, export, import ---
+    // --- Orders, modals, settings, export, import (unchanged) ---
     function renderOrders() {
         const filter = document.getElementById('orderFilter')?.value||'pending';
         let filtered = ordersList;
@@ -995,312 +995,268 @@
     document.getElementById('recDate').value = todayISO();
     document.getElementById('outDate').value = todayISO();
     applyDeviceMode();
+
     // ==================== VOICE FEATURES ====================
-// Feature flags (default off)
-let voiceFeedbackOn = localStorage.getItem('tt_voiceFeedback') === 'true';
-let voiceCommandOn = localStorage.getItem('tt_voiceCommand') === 'true';
-let voiceRecognition = null;
-let isListening = false;
+    let voiceFeedbackOn = localStorage.getItem('tt_voiceFeedback') === 'true';
+    let voiceCommandOn = localStorage.getItem('tt_voiceCommand') === 'true';
+    let voiceRecognition = null;
+    let isListening = false;
 
-// Toggle feedback
-window.toggleVoiceFeedback = function() {
-  voiceFeedbackOn = !voiceFeedbackOn;
-  localStorage.setItem('tt_voiceFeedback', voiceFeedbackOn);
-  const btn = document.getElementById('btnVoiceFeedback');
-  btn.textContent = voiceFeedbackOn ? '🔊 VOICE ON' : '🔊 VOICE OFF';
-  btn.style.background = voiceFeedbackOn ? 'var(--green)' : '';
-  showToast(voiceFeedbackOn ? 'Voice feedback ON' : 'Voice feedback OFF', 'success');
-};
+    window.toggleVoiceFeedback = function() {
+        voiceFeedbackOn = !voiceFeedbackOn;
+        localStorage.setItem('tt_voiceFeedback', voiceFeedbackOn);
+        const btn = document.getElementById('btnVoiceFeedback');
+        btn.textContent = voiceFeedbackOn ? '🔊 VOICE ON' : '🔊 VOICE OFF';
+        btn.style.background = voiceFeedbackOn ? 'var(--green)' : '';
+        showToast(voiceFeedbackOn ? 'Voice feedback ON' : 'Voice feedback OFF', 'success');
+    };
 
-// Toggle voice command mode
-window.toggleVoiceCommand = function() {
-  voiceCommandOn = !voiceCommandOn;
-  localStorage.setItem('tt_voiceCommand', voiceCommandOn);
-  const btn = document.getElementById('btnVoiceCommand');
-  btn.textContent = voiceCommandOn ? '🎤 CMD ON' : '🎤 CMD OFF';
-  btn.style.background = voiceCommandOn ? 'var(--green)' : '';
-  document.getElementById('micButtonContainer').style.display = voiceCommandOn ? 'block' : 'none';
-  showToast(voiceCommandOn ? 'Voice commands ON. Tap mic to speak.' : 'Voice commands OFF', 'success');
-  // Abort any running recognition
-  if (!voiceCommandOn && voiceRecognition) {
-    voiceRecognition.abort();
-    isListening = false;
-  }
-};
+    window.toggleVoiceCommand = function() {
+        voiceCommandOn = !voiceCommandOn;
+        localStorage.setItem('tt_voiceCommand', voiceCommandOn);
+        const btn = document.getElementById('btnVoiceCommand');
+        btn.textContent = voiceCommandOn ? '🎤 CMD ON' : '🎤 CMD OFF';
+        btn.style.background = voiceCommandOn ? 'var(--green)' : '';
+        document.getElementById('micButtonContainer').style.display = voiceCommandOn ? 'block' : 'none';
+        showToast(voiceCommandOn ? 'Voice commands ON. Tap mic to speak.' : 'Voice commands OFF', 'success');
+        if (!voiceCommandOn && voiceRecognition) {
+            voiceRecognition.abort();
+            isListening = false;
+        }
+    };
 
-// Simple speech synthesis (voice feedback)
-function speak(text) {
-  if (!voiceFeedbackOn) return;
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); // stop any previous speech
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9; // slightly slower for clarity
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    // Use a clear voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Male')) || voices.find(v => v.lang.startsWith('en'));
-    if (englishVoice) utterance.voice = englishVoice;
-    window.speechSynthesis.speak(utterance);
-  }
-}
-
-// Hook into Fast Scan to provide voice feedback
-// We'll modify the existing Fast Scan listener, but only add the speak call.
-// Since we can't easily modify the anonymous function, we'll override the showNotification
-// to also speak. Better: wrap playAlertChime and showNotification.
-// Instead, we'll patch the end of the Fast Scan handler by redefining it after original script.
-// (We'll do this safely by storing a reference.)
-
-// Store original showNotification to extend it
-const originalShowNotification = showNotification;
-showNotification = function(title, message, type) {
-  originalShowNotification(title, message, type);
-  if (type === 'out' && voiceFeedbackOn) {
-    speak(message);
-  }
-};
-
-// For Fast Scan specifically, the message format is "1 LV1852 SHIPPED."
-// That's fine.
-
-// ==================== VOICE COMMANDS ====================
-// Start listening for a spoken command
-window.startVoiceCommand = function() {
-  if (!voiceCommandOn) return;
-  if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-    showToast('Speech recognition not supported in this browser', 'error');
-    return;
-  }
-  if (isListening) {
-    voiceRecognition.stop();
-    return;
-  }
-
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  voiceRecognition = new SpeechRecognition();
-  voiceRecognition.continuous = false;
-  voiceRecognition.interimResults = false;
-  voiceRecognition.lang = 'en-US';
-
-  voiceRecognition.onstart = () => {
-    isListening = true;
-    const micBtn = document.getElementById('micButton');
-    micBtn.style.background = '#e74c3c';
-    micBtn.textContent = '⏺️';
-    showToast('Listening... speak now', 'info');
-  };
-
-  voiceRecognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript.trim().toLowerCase();
-    speak(`You said: ${transcript}`);
-    processVoiceCommand(transcript);
-  };
-
-  voiceRecognition.onerror = (event) => {
-    console.error('Speech recognition error:', event.error);
-    showToast('Voice recognition error: ' + event.error, 'error');
-    stopMicUI();
-  };
-
-  voiceRecognition.onend = () => {
-    stopMicUI();
-  };
-
-  voiceRecognition.start();
-};
-
-function stopMicUI() {
-  isListening = false;
-  const micBtn = document.getElementById('micButton');
-  micBtn.style.background = 'var(--accent)';
-  micBtn.textContent = '🎙️';
-}
-
-// Command parser
-function processVoiceCommand(raw) {
-  // Normalize: remove punctuation, extra spaces
-  const cmd = raw.replace(/[.,?!]/g, '').trim();
-  
-  // Examples:
-  // "ship two LV1852"
-  // "receive five LV1850 from Valspar"
-  // "add 3 lv1852" (receive)
-  // "out 2 lv1852 to booth"
-  // We'll look for keywords: ship, receive, add, out, and a number.
-
-  const words = cmd.split(/\s+/);
-  let action = null;
-  let qty = 1;
-  let tonerCode = null;
-  let extra = '';
-
-  // Find action
-  if (cmd.includes('ship') || cmd.includes('out') || cmd.includes('send')) {
-    action = 'out';
-  } else if (cmd.includes('receive') || cmd.includes('add') || cmd.includes('in')) {
-    action = 'in';
-  } else {
-    speak('Sorry, please say ship or receive.');
-    return;
-  }
-
-  // Find quantity (word or digit)
-  const numberWords = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
-  let foundQty = false;
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i];
-    if (!isNaN(w) && Number.isInteger(Number(w))) {
-      qty = parseInt(w);
-      foundQty = true;
-      break;
-    } else if (numberWords[w] !== undefined) {
-      qty = numberWords[w];
-      foundQty = true;
-      break;
+    function speak(text) {
+        if (!voiceFeedbackOn) return;
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            const voices = window.speechSynthesis.getVoices();
+            const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Male')) || voices.find(v => v.lang.startsWith('en'));
+            if (englishVoice) utterance.voice = englishVoice;
+            window.speechSynthesis.speak(utterance);
+        }
     }
-  }
-  if (!foundQty) qty = 1; // default
 
-  // Find toner code (looks for a combination of letters+numbers like LV1852)
-  // Assume it's the token that matches typical toner number pattern (uppercase letters + digits)
-  const tonerPattern = /^[a-z]+\d+$/i;
-  let tonerIndex = -1;
-  for (let i = 0; i < words.length; i++) {
-    if (tonerPattern.test(words[i]) && words[i].length >= 4) {
-      tonerCode = words[i].toUpperCase();
-      tonerIndex = i;
-      break;
+    // Override showNotification to also speak
+    const originalShowNotification = showNotification;
+    showNotification = function(title, message, type) {
+        originalShowNotification(title, message, type);
+        if (type === 'out' && voiceFeedbackOn) {
+            speak(message);
+        }
+    };
+
+    window.startVoiceCommand = function() {
+        if (!voiceCommandOn) return;
+        if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+            showToast('Speech recognition not supported in this browser', 'error');
+            return;
+        }
+        if (isListening) {
+            voiceRecognition.stop();
+            return;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        voiceRecognition = new SpeechRecognition();
+        voiceRecognition.continuous = false;
+        voiceRecognition.interimResults = false;
+        voiceRecognition.lang = 'en-US';
+
+        voiceRecognition.onstart = () => {
+            isListening = true;
+            const micBtn = document.getElementById('micButton');
+            micBtn.style.background = '#e74c3c';
+            micBtn.textContent = '⏺️';
+            showToast('Listening... speak now', 'info');
+        };
+
+        voiceRecognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript.trim().toLowerCase();
+            speak(`You said: ${transcript}`);
+            processVoiceCommand(transcript);
+        };
+
+        voiceRecognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            showToast('Voice recognition error: ' + event.error, 'error');
+            stopMicUI();
+        };
+
+        voiceRecognition.onend = () => {
+            stopMicUI();
+        };
+
+        voiceRecognition.start();
+    };
+
+    function stopMicUI() {
+        isListening = false;
+        const micBtn = document.getElementById('micButton');
+        micBtn.style.background = 'var(--accent)';
+        micBtn.textContent = '🎙️';
     }
-  }
-  if (!tonerCode) {
-    // fallback: take the last word that looks alphanumeric
-    for (let i = words.length-1; i >=0; i--) {
-      if (/^[a-z0-9]+$/i.test(words[i]) && words[i].length >= 4) {
-        tonerCode = words[i].toUpperCase();
-        break;
-      }
+
+    function processVoiceCommand(raw) {
+        const cmd = raw.replace(/[.,?!]/g, '').trim();
+        const words = cmd.split(/\s+/);
+        let action = null;
+        let qty = 1;
+        let tonerCode = null;
+
+        if (cmd.includes('ship') || cmd.includes('out') || cmd.includes('send')) {
+            action = 'out';
+        } else if (cmd.includes('receive') || cmd.includes('add') || cmd.includes('in')) {
+            action = 'in';
+        } else {
+            speak('Sorry, please say ship or receive.');
+            return;
+        }
+
+        const numberWords = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
+        let foundQty = false;
+        for (let i = 0; i < words.length; i++) {
+            const w = words[i];
+            if (!isNaN(w) && Number.isInteger(Number(w))) {
+                qty = parseInt(w);
+                foundQty = true;
+                break;
+            } else if (numberWords[w] !== undefined) {
+                qty = numberWords[w];
+                foundQty = true;
+                break;
+            }
+        }
+        if (!foundQty) qty = 1;
+
+        const tonerPattern = /^[a-z]+\d+$/i;
+        let tonerIndex = -1;
+        for (let i = 0; i < words.length; i++) {
+            if (tonerPattern.test(words[i]) && words[i].length >= 4) {
+                tonerCode = words[i].toUpperCase();
+                tonerIndex = i;
+                break;
+            }
+        }
+        if (!tonerCode) {
+            for (let i = words.length-1; i >=0; i--) {
+                if (/^[a-z0-9]+$/i.test(words[i]) && words[i].length >= 4) {
+                    tonerCode = words[i].toUpperCase();
+                    break;
+                }
+            }
+        }
+        if (!tonerCode) {
+            speak('Toner code not understood. Please say the code clearly.');
+            return;
+        }
+
+        if (!inventory[tonerCode]) {
+            speak(`${tonerCode} not found in inventory.`);
+            return;
+        }
+
+        const actionWord = action === 'out' ? 'Ship' : 'Receive';
+        const confirmText = `${actionWord} ${qty} ${tonerCode}? Say yes to confirm or no to cancel.`;
+        speak(confirmText);
+        showToast(confirmText, 'info');
+
+        confirmAction(action, qty, tonerCode);
     }
-  }
-  if (!tonerCode) {
-    speak('Toner code not understood. Please say the code clearly.');
-    return;
-  }
 
-  // Check if toner exists
-  if (!inventory[tonerCode]) {
-    speak(`${tonerCode} not found in inventory.`);
-    return;
-  }
+    function confirmAction(action, qty, tonerCode) {
+        if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+            if (confirm(`Confirm ${action} ${qty} ${tonerCode}?`)) {
+                executeAction(action, qty, tonerCode);
+            }
+            return;
+        }
 
-  // Build confirmation message
-  const actionWord = action === 'out' ? 'Ship' : 'Receive';
-  const confirmText = `${actionWord} ${qty} ${tonerCode}? Say yes to confirm or no to cancel.`;
-  speak(confirmText);
-  showToast(confirmText, 'info');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const confirmationRecognition = new SpeechRecognition();
+        confirmationRecognition.continuous = false;
+        confirmationRecognition.interimResults = false;
+        confirmationRecognition.lang = 'en-US';
 
-  // Listen for confirmation
-  confirmAction(action, qty, tonerCode);
-}
+        confirmationRecognition.onresult = (event) => {
+            const reply = event.results[0][0].transcript.trim().toLowerCase();
+            if (reply.includes('yes') || reply.includes('yeah') || reply.includes('confirm')) {
+                executeAction(action, qty, tonerCode);
+            } else {
+                speak('Cancelled.');
+            }
+            stopMicUI();
+        };
 
-function confirmAction(action, qty, tonerCode) {
-  if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-    // Fallback: prompt
-    if (confirm(`Confirm ${action} ${qty} ${tonerCode}?`)) {
-      executeAction(action, qty, tonerCode);
+        confirmationRecognition.onerror = () => {
+            speak('Could not hear confirmation. Cancelled.');
+            stopMicUI();
+        };
+
+        confirmationRecognition.start();
     }
-    return;
-  }
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const confirmationRecognition = new SpeechRecognition();
-  confirmationRecognition.continuous = false;
-  confirmationRecognition.interimResults = false;
-  confirmationRecognition.lang = 'en-US';
-
-  confirmationRecognition.onresult = (event) => {
-    const reply = event.results[0][0].transcript.trim().toLowerCase();
-    if (reply.includes('yes') || reply.includes('yeah') || reply.includes('confirm')) {
-      executeAction(action, qty, tonerCode);
-    } else {
-      speak('Cancelled.');
+    function executeAction(action, qty, tonerCode) {
+        const toner = inventory[tonerCode];
+        if (!toner) {
+            speak(`${tonerCode} not found.`);
+            return;
+        }
+        if (action === 'out') {
+            if (toner.stock < qty) {
+                speak(`Only ${toner.stock} in stock.`);
+                return;
+            }
+            db.collection('inventory').doc(tonerCode).update({ 
+                stock: firebase.firestore.FieldValue.increment(-qty), 
+                lastUpdated: todayISO() 
+            });
+            db.collection('history').add({
+                date: todayISO(),
+                type: 'out',
+                tonerCode: tonerCode,
+                quantity: qty,
+                customerOrSupplier: 'VOICE COMMAND',
+                line: toner.line,
+                costPerUnit: toner.cost || 0,
+                timestamp: Date.now()
+            });
+            speak(`Shipped ${qty} ${tonerCode}. ${toner.stock - qty} remaining.`);
+            showNotification('VOICE SHIP', `${qty} ${tonerCode} shipped.`, 'out');
+        } else if (action === 'in') {
+            db.collection('inventory').doc(tonerCode).update({ 
+                stock: firebase.firestore.FieldValue.increment(qty), 
+                lastUpdated: todayISO() 
+            });
+            db.collection('history').add({
+                date: todayISO(),
+                type: 'in',
+                tonerCode: tonerCode,
+                quantity: qty,
+                customerOrSupplier: 'VOICE COMMAND',
+                line: toner.line,
+                costPerUnit: toner.cost || 0,
+                timestamp: Date.now()
+            });
+            speak(`Received ${qty} ${tonerCode}. Now ${toner.stock + qty} in stock.`);
+            showNotification('VOICE RECEIVE', `${qty} ${tonerCode} received.`, 'in');
+        }
     }
-    stopMicUI();
-  };
 
-  confirmationRecognition.onerror = () => {
-    speak('Could not hear confirmation. Cancelled.');
-    stopMicUI();
-  };
+    // Initial UI state
+    (function initVoiceUI() {
+        const fbBtn = document.getElementById('btnVoiceFeedback');
+        fbBtn.textContent = voiceFeedbackOn ? '🔊 VOICE ON' : '🔊 VOICE OFF';
+        fbBtn.style.background = voiceFeedbackOn ? 'var(--green)' : '';
 
-  confirmationRecognition.onend = () => {
-    // nothing
-  };
-
-  confirmationRecognition.start();
-}
-
-function executeAction(action, qty, tonerCode) {
-  const toner = inventory[tonerCode];
-  if (!toner) {
-    speak(`${tonerCode} not found.`);
-    return;
-  }
-  if (action === 'out') {
-    if (toner.stock < qty) {
-      speak(`Only ${toner.stock} in stock.`);
-      return;
-    }
-    // Perform outgoing using the same logic as handleOutgoing but with today's date
-    db.collection('inventory').doc(tonerCode).update({ 
-      stock: firebase.firestore.FieldValue.increment(-qty), 
-      lastUpdated: todayISO() 
-    });
-    db.collection('history').add({
-      date: todayISO(),
-      type: 'out',
-      tonerCode: tonerCode,
-      quantity: qty,
-      customerOrSupplier: 'VOICE COMMAND',
-      line: toner.line,
-      costPerUnit: toner.cost || 0,
-      timestamp: Date.now()
-    });
-    speak(`Shipped ${qty} ${tonerCode}. ${toner.stock - qty} remaining.`);
-    showNotification('VOICE SHIP', `${qty} ${tonerCode} shipped.`, 'out');
-  } else if (action === 'in') {
-    // Receive: we don't have supplier from voice easily, so set a default or ask? For simplicity, default to 'VOICE COMMAND'
-    db.collection('inventory').doc(tonerCode).update({ 
-      stock: firebase.firestore.FieldValue.increment(qty), 
-      lastUpdated: todayISO() 
-    });
-    db.collection('history').add({
-      date: todayISO(),
-      type: 'in',
-      tonerCode: tonerCode,
-      quantity: qty,
-      customerOrSupplier: 'VOICE COMMAND',
-      line: toner.line,
-      costPerUnit: toner.cost || 0,
-      timestamp: Date.now()
-    });
-    speak(`Received ${qty} ${tonerCode}. Now ${toner.stock + qty} in stock.`);
-    showNotification('VOICE RECEIVE', `${qty} ${tonerCode} received.`, 'in');
-  }
-  // The Firestore listeners will automatically refresh the UI.
-}
-
-// Restore initial UI state based on saved prefs
-(function initVoiceUI() {
-  const fbBtn = document.getElementById('btnVoiceFeedback');
-  fbBtn.textContent = voiceFeedbackOn ? '🔊 VOICE ON' : '🔊 VOICE OFF';
-  fbBtn.style.background = voiceFeedbackOn ? 'var(--green)' : '';
-
-  const cmdBtn = document.getElementById('btnVoiceCommand');
-  cmdBtn.textContent = voiceCommandOn ? '🎤 CMD ON' : '🎤 CMD OFF';
-  cmdBtn.style.background = voiceCommandOn ? 'var(--green)' : '';
-  document.getElementById('micButtonContainer').style.display = voiceCommandOn ? 'block' : 'none';
-})();
+        const cmdBtn = document.getElementById('btnVoiceCommand');
+        cmdBtn.textContent = voiceCommandOn ? '🎤 CMD ON' : '🎤 CMD OFF';
+        cmdBtn.style.background = voiceCommandOn ? 'var(--green)' : '';
+        document.getElementById('micButtonContainer').style.display = voiceCommandOn ? 'block' : 'none';
+    })();
 </script>
 </body>
 </html>
