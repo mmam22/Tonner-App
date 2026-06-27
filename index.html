@@ -7,8 +7,7 @@
     <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22TONERTRACK%20PRO%22%2C%22short_name%22%3A%22Toners%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b1219%22%2C%22theme_color%22%3A%22%23f68523%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'45'%20fill%3D'%2523f68523'%2F%3E%3Ctext%20x%3D'50'%20y%3D'70'%20font-size%3D'60'%20text-anchor%3D'middle'%20fill%3D'white'%3ETT%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22100x100%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
     <meta name="theme-color" content="#f68523">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root {
@@ -342,7 +341,7 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-
+    const voiceCommand = firebase.functions().httpsCallable('voiceCommand');
     const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
     let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
     let deviceMode = localStorage.getItem('tonerMode') || 'full';
@@ -1050,6 +1049,8 @@
     };
 
     window.startVoiceCommand = function() {
+        console.log('startVoiceCommand called, voiceCommandOn:', voiceCommandOn);
+        console.log('SpeechRecognition supported:', !!(window.SpeechRecognition || window.webkitSpeechRecognition));
         if (!voiceCommandOn) return;
         if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
             showToast('Speech recognition not supported in this browser', 'error');
@@ -1100,72 +1101,75 @@
         micBtn.textContent = '🎙️';
     }
 
-    function processVoiceCommand(raw) {
-        const cmd = raw.replace(/[.,?!]/g, '').trim();
-        const words = cmd.split(/\s+/);
-        let action = null;
-        let qty = 1;
-        let tonerCode = null;
+async function processVoiceCommand(raw) {
+    const transcript = raw.trim();
+    showToast('Thinking...', 'info');
 
-        if (cmd.includes('ship') || cmd.includes('out') || cmd.includes('send')) {
-            action = 'out';
-        } else if (cmd.includes('receive') || cmd.includes('add') || cmd.includes('in')) {
-            action = 'in';
-        } else {
-            speak('Sorry, please say ship or receive.');
-            return;
-        }
-
-        const numberWords = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
-        let foundQty = false;
-        for (let i = 0; i < words.length; i++) {
-            const w = words[i];
-            if (!isNaN(w) && Number.isInteger(Number(w))) {
-                qty = parseInt(w);
-                foundQty = true;
-                break;
-            } else if (numberWords[w] !== undefined) {
-                qty = numberWords[w];
-                foundQty = true;
-                break;
-            }
-        }
-        if (!foundQty) qty = 1;
-
-        const tonerPattern = /^[a-z]+\d+$/i;
-        let tonerIndex = -1;
-        for (let i = 0; i < words.length; i++) {
-            if (tonerPattern.test(words[i]) && words[i].length >= 4) {
-                tonerCode = words[i].toUpperCase();
-                tonerIndex = i;
-                break;
-            }
-        }
-        if (!tonerCode) {
-            for (let i = words.length-1; i >=0; i--) {
-                if (/^[a-z0-9]+$/i.test(words[i]) && words[i].length >= 4) {
-                    tonerCode = words[i].toUpperCase();
-                    break;
-                }
-            }
-        }
-        if (!tonerCode) {
-            speak('Toner code not understood. Please say the code clearly.');
-            return;
-        }
-
-        if (!inventory[tonerCode]) {
-            speak(`${tonerCode} not found in inventory.`);
-            return;
-        }
-
-        const actionWord = action === 'out' ? 'Ship' : 'Receive';
-        const confirmText = `${actionWord} ${qty} ${tonerCode}? Say yes to confirm or no to cancel.`;
-        speak(confirmText);
-        showToast(confirmText, 'info');
-
-        confirmAction(action, qty, tonerCode);
+    try {
+        const result = await voiceCommand({ transcript, lines, suppliers });
+        const { intent, params } = result.data;
+        executeVoiceIntent(intent, params);
+    } catch (e) {
+        console.error('Voice error:', e);
+        speak('Sorry, I had trouble. Please try again.');
     }
+}
+
+function executeVoiceIntent(intent, params) {
+    switch(intent) {
+        case 'query_stock': {
+            const toner = inventory[(params.sku || '').toUpperCase()];
+            if (!toner) return speak(`${params.sku} not found.`);
+            const status = toner.stock < toner.minLevel ? 'LOW STOCK' : 'OK';
+            speak(`${toner.code}: ${toner.stock} units in ${toner.line}. ${status}.`);
+            break;
+        }
+        case 'list_low_stock': {
+            const low = Object.values(inventory).filter(t => t.stock < t.minLevel);
+            if (!low.length) return speak('No low-stock items.');
+            const list = low.map(t => `${t.code}: ${t.stock}/${t.minLevel}`).join(', ');
+            speak(`${low.length} low: ${list}`);
+            break;
+        }
+        case 'total_inventory_value': {
+            const total = Object.values(inventory).reduce((s, t) => s + (t.stock * (t.cost || 0)), 0);
+            speak(`Total inventory value is $${total.toFixed(2)}.`);
+            break;
+        }
+        case 'ship_item': {
+            const sku = (params.sku || '').toUpperCase();
+            const qty = params.quantity || 1;
+            const toner = inventory[sku];
+            if (!toner) return speak(`${sku} not found.`);
+            if (toner.stock < qty) return speak(`Only ${toner.stock} in stock.`);
+            speak(`Ship ${qty} ${sku}? Say yes to confirm.`);
+            confirmAction('out', qty, sku);
+            break;
+        }
+        case 'receive_item': {
+            const sku = (params.sku || '').toUpperCase();
+            const qty = params.quantity || 1;
+            if (!inventory[sku]) return speak(`${sku} not found. Use the Receive form to add it first.`);
+            speak(`Receive ${qty} ${sku}? Say yes to confirm.`);
+            confirmAction('in', qty, sku);
+            break;
+        }
+        case 'navigate_to_tab': {
+            const tab = params.tab;
+            const tabBtn = document.querySelector(`#mainTabs .tab[data-tab="${tab}"]`);
+            if (tabBtn) tabBtn.click();
+            speak(`Showing ${tab}.`);
+            break;
+        }
+        case 'open_receive_modal': openReceiveModal(); speak('Receive form opened.'); break;
+        case 'open_outgoing_modal': openOutgoingModal(); speak('Outgoing form opened.'); break;
+        case 'export_csv': exportCSV(); speak('CSV downloaded.'); break;
+        case 'print_report': printReport(); speak('Report opened.'); break;
+        case 'reorder_low_stock': reorderLowStock(); break;
+        case 'help': speak('You can ask: how many of a toner, list low stock, ship or receive items, go to orders, export CSV, and more.'); break;
+        default: speak('Command not yet supported.'); break;
+    }
+}
 
     function confirmAction(action, qty, tonerCode) {
         if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
