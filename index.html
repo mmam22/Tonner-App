@@ -1203,21 +1203,39 @@
         }
     };
 
-    function speak(text) {
-        if (!voiceFeedbackOn) return;
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.9;
-            utterance.pitch = 1;
-            utterance.volume = 1;
+   function speak(text) {
+    if (!voiceFeedbackOn) return;
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.85;  // slightly slower, more natural
+        utterance.pitch = 0.9;  // slightly deeper
+        utterance.volume = 1;
+        
+        // Wait for voices to load, then pick the best male voice
+        const setVoice = () => {
             const voices = window.speechSynthesis.getVoices();
-            const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Male')) || voices.find(v => v.lang.startsWith('en'));
-            if (englishVoice) utterance.voice = englishVoice;
+            // Prefer a deep English male voice
+            const preferred = voices.find(v => 
+                v.lang.startsWith('en') && 
+                (v.name.includes('Daniel') || 
+                 v.name.includes('Google UK English Male') ||
+                 v.name.includes('Microsoft David') ||
+                 (v.name.includes('Male') && !v.name.includes('Female')))
+            );
+            const fallback = voices.find(v => v.lang.startsWith('en'));
+            utterance.voice = preferred || fallback || voices[0];
             window.speechSynthesis.speak(utterance);
+        };
+        
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            setVoice();
+        } else {
+            window.speechSynthesis.onvoiceschanged = setVoice;
         }
     }
-
+}
     // Override showNotification to also speak
     const originalShowNotification = showNotification;
     showNotification = function(title, message, type) {
