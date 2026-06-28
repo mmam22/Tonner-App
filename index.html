@@ -1024,15 +1024,32 @@
         }
     };
 
-    async function speak(text) {
+   async function speak(text) {
     if (!voiceFeedbackOn) return;
     try {
         const speakFunc = firebase.functions().httpsCallable('speak');
         const result = await speakFunc({ text });
-        const audio = new Audio(`data:audio/mpeg;base64,${result.data.audio}`);
-        audio.play();
+        
+        const binaryString = atob(result.data.audio);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        
+        audio.onended = () => URL.revokeObjectURL(url);
+        audio.onerror = (e) => {
+            console.error('Audio playback error:', e);
+            URL.revokeObjectURL(url);
+            throw new Error('Playback failed');
+        };
+        
+        await audio.play();
     } catch (e) {
         console.error('ElevenLabs error:', e);
+        // Fallback to browser TTS
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 0.9;
