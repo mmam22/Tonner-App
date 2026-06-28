@@ -1029,32 +1029,6 @@ async function speak(text) {
     try {
         const speakFunc = firebase.functions().httpsCallable('speak');
         const result = await speakFunc({ text });
-        
-                const byteCharacters = atob(result.data.audio);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        
-        const audio = new Audio();
-        audio.src = url;
-        audio.onended = () => URL.revokeObjectURL(url);
-        
-        await audio.play();
-    } catch (e) {
-        console.error('ElevenLabs error:', e);
-        if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.9;
-            utterance.pitch = 0.85;
-            window.speechSynthesis.speak(utterance);
-        }
-    }
-}
-
     // Override showNotification to also speak
     const originalShowNotification = showNotification;
     showNotification = function(title, message, type) {
