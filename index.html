@@ -1036,11 +1036,20 @@ async function speak(text) {
             bytes[i] = binaryStr.charCodeAt(i);
         }
         
-        const blob = new Blob([bytes], { type: "audio/mpeg" });
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.onended = () => URL.revokeObjectURL(url);
-        await audio.play();
+        // Use Web Audio API instead of Audio element
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(bytes.buffer.slice(0));
+        
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        source.start();
+        
+        await new Promise(resolve => {
+            source.onended = resolve;
+        });
+        
+        audioCtx.close();
     } catch (e) {
         console.error("ElevenLabs error:", e);
         if ("speechSynthesis" in window) {
@@ -1051,7 +1060,6 @@ async function speak(text) {
         }
     }
 }
-
 // Override showNotification to also speak
 const originalShowNotification = showNotification;
 showNotification = function(title, message, type) {
