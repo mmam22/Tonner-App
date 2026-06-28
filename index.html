@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>TONERTRACK PRO</title>
+    <title>TONERTRACK PRO v3</title>
     <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22TONERTRACK%20PRO%22%2C%22short_name%22%3A%22Toners%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230b1219%22%2C%22theme_color%22%3A%22%23f68523%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'45'%20fill%3D'%2523f68523'%2F%3E%3Ctext%20x%3D'50'%20y%3D'70'%20font-size%3D'60'%20text-anchor%3D'middle'%20fill%3D'white'%3ETT%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22100x100%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
     <meta name="theme-color" content="#f68523">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -1138,38 +1138,44 @@ function executeVoiceIntent(intent, params) {
     switch(intent) {
         case 'query_stock': {
             const toner = inventory[(params.sku || '').toUpperCase()];
-            if (!toner) return speak(`${params.sku} not found.`);
-            const status = toner.stock < toner.minLevel ? 'LOW STOCK' : 'OK';
-            speak(`${toner.code}: ${toner.stock} units in ${toner.line}. ${status}.`);
+            if (!toner) return speak(`Hmm, I couldn't find ${params.sku} in your inventory. Want to check another one?`);
+            if (toner.stock < toner.minLevel) {
+                speak(`You've got ${toner.stock} units of ${toner.code} in ${toner.line}. That's below your minimum of ${toner.minLevel}. Might be time to reorder.`);
+            } else {
+                speak(`You have ${toner.stock} units of ${toner.code} in ${toner.line}. Looking healthy.`);
+            }
             break;
         }
         case 'list_low_stock': {
             const low = Object.values(inventory).filter(t => t.stock < t.minLevel);
-            if (!low.length) return speak('No low-stock items.');
-            const list = low.map(t => `${t.code}: ${t.stock}/${t.minLevel}`).join(', ');
-            speak(`${low.length} low: ${list}`);
+            if (!low.length) return speak('Everything is fully stocked. Nothing to worry about right now.');
+            if (low.length === 1) {
+                const t = low[0];
+                return speak(`Just one item needs attention. ${t.code} is down to ${t.stock}, and your minimum is ${t.minLevel}.`);
+            }
+            speak(`You've got ${low.length} items running low. ${low.map(t => t.code).join(', ')}. Want me to help with a reorder?`);
             break;
         }
         case 'total_inventory_value': {
             const total = Object.values(inventory).reduce((s, t) => s + (t.stock * (t.cost || 0)), 0);
-            speak(`Total inventory value is $${total.toFixed(2)}.`);
+            speak(`Your total inventory is worth about ${Math.round(total).toLocaleString()} dollars.`);
             break;
         }
         case 'ship_item': {
             const sku = (params.sku || '').toUpperCase();
             const qty = params.quantity || 1;
             const toner = inventory[sku];
-            if (!toner) return speak(`${sku} not found.`);
-            if (toner.stock < qty) return speak(`Only ${toner.stock} in stock.`);
-            speak(`Ship ${qty} ${sku}? Say yes to confirm.`);
+            if (!toner) return speak(`I don't have ${sku} in the system.`);
+            if (toner.stock < qty) return speak(`Sorry, you only have ${toner.stock} of ${sku}. You can't ship ${qty}.`);
+            speak(`Alright. Shipping ${qty} ${sku}. Does that sound right? Say yes to confirm.`);
             confirmAction('out', qty, sku);
             break;
         }
         case 'receive_item': {
             const sku = (params.sku || '').toUpperCase();
             const qty = params.quantity || 1;
-            if (!inventory[sku]) return speak(`${sku} not found. Use the Receive form to add it first.`);
-            speak(`Receive ${qty} ${sku}? Say yes to confirm.`);
+            if (!inventory[sku]) return speak(`${sku} isn't in your inventory yet. You'll need to add it through the receive form first.`);
+            speak(`Receiving ${qty} ${sku}. Confirm? Say yes or no.`);
             confirmAction('in', qty, sku);
             break;
         }
@@ -1177,16 +1183,17 @@ function executeVoiceIntent(intent, params) {
             const tab = params.tab;
             const tabBtn = document.querySelector(`#mainTabs .tab[data-tab="${tab}"]`);
             if (tabBtn) tabBtn.click();
-            speak(`Showing ${tab}.`);
+            const tabNames = { inventory: 'the main inventory', orders: 'your orders', history: 'transaction history', lowstock: 'low stock items' };
+            speak(`Here's ${tabNames[tab] || tab}.`);
             break;
         }
-        case 'open_receive_modal': openReceiveModal(); speak('Receive form opened.'); break;
-        case 'open_outgoing_modal': openOutgoingModal(); speak('Outgoing form opened.'); break;
-        case 'export_csv': exportCSV(); speak('CSV downloaded.'); break;
-        case 'print_report': printReport(); speak('Report opened.'); break;
-        case 'reorder_low_stock': reorderLowStock(); break;
-        case 'help': speak('You can ask: how many of a toner, list low stock, ship or receive items, go to orders, export CSV, and more.'); break;
-        default: speak('Command not yet supported.'); break;
+        case 'open_receive_modal': openReceiveModal(); speak('Receive form is open. Scan or type the toner code when ready.'); break;
+        case 'open_outgoing_modal': openOutgoingModal(); speak('Outgoing form is open. You can ship a toner from here.'); break;
+        case 'export_csv': exportCSV(); speak('CSV file downloaded.'); break;
+        case 'print_report': printReport(); speak('Report opened in a new tab.'); break;
+        case 'reorder_low_stock': reorderLowStock(); speak('Opening reorder form with your low stock items.'); break;
+        case 'help': speak('I can check stock levels, tell you what is running low, ship or receive items, open forms, switch tabs, export reports. What can I help with?'); break;
+        default: speak("I didn't quite catch that. Try asking about a specific toner, or say help to hear what I can do."); break;
     }
 }
 
