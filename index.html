@@ -1097,7 +1097,6 @@
 
         voiceRecognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript.trim().toLowerCase();
-            speak(`You said: ${transcript}`);
             processVoiceCommand(transcript);
         };
 
