@@ -1122,6 +1122,7 @@ async function processVoiceCommand(raw) {
 }
 
 function executeVoiceIntent(intent, params) {
+    console.log('Intent:', intent, 'Params:', JSON.stringify(params));
     switch(intent) {
         case 'query_stock': {
             const toner = inventory[(params.sku || '').toUpperCase()];
