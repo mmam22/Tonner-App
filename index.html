@@ -1125,7 +1125,9 @@ function executeVoiceIntent(intent, params) {
     console.log('Intent:', intent, 'Params:', JSON.stringify(params));
     switch(intent) {
         case 'query_stock': {
-            const toner = inventory[(params.sku || '').toUpperCase()];
+    let sku = (params.sku || '').toUpperCase();
+    sku = sku.replace(/ TONERS?$| CARTRIDGES?$| UNITS?$/i, '').trim();
+    const toner = inventory[sku];
             if (!toner) return speak(`Hmm, I couldn't find ${params.sku} in your inventory. Want to check another one?`);
             if (toner.stock < toner.minLevel) {
                 speak(`You've got ${toner.stock} units of ${toner.code} in ${toner.line}. That's below your minimum of ${toner.minLevel}. Might be time to reorder.`);
