@@ -1024,34 +1024,26 @@
         }
     };
 
-async function speak(text) {
+function speak(text) {
     if (!voiceFeedbackOn) return;
-    try {
-        const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM", {
-            method: "POST",
-            headers: {
-                "xi-api-key": "sk_f5ef0e808188e7b1bee8ab2ea40f2453e22ca8d1c68026cd",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                text: text,
-                voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-            })
-        });
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.85;
+        utterance.pitch = 0.9;
+        utterance.volume = 1;
         
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audio.onended = () => URL.revokeObjectURL(url);
-        await audio.play();
-    } catch (e) {
-        console.error("ElevenLabs error:", e);
-        if ("speechSynthesis" in window) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.85;
-            utterance.pitch = 0.9;
-            window.speechSynthesis.speak(utterance);
-        }
+        const voices = window.speechSynthesis.getVoices();
+        const deep = voices.find(v => 
+            v.lang.startsWith('en') && 
+            (v.name.includes('Google UK English Male') ||
+             v.name.includes('Microsoft David') ||
+             v.name.includes('Daniel') ||
+             v.name.includes('Male'))
+        );
+        if (deep) utterance.voice = deep;
+        
+        window.speechSynthesis.speak(utterance);
     }
 }
 // Override showNotification to also speak

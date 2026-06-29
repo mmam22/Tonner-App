@@ -37,27 +37,27 @@ exports.speak = onCall(
       voice_settings: { stability: 0.5, similarity_boost: 0.75 }
     });
 
-    const options = {
-      hostname: "api.elevenlabs.io",
-      path: "/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM",
-      method: "POST",
-      headers: {
-        "xi-api-key": elevenlabsKey.value(),
-        "Content-Type": "application/json",
-        "Accept": "audio/mpeg"
-      }
-    };
-
     return new Promise((resolve, reject) => {
-      const req = https.request(options, (res) => {
-        const chunks = [];
-        res.on("data", (chunk) => chunks.push(chunk));
-        res.on("end", () => {
-          const buffer = Buffer.concat(chunks);
-          resolve({ audio: buffer.toString("base64") });
-        });
-      });
-      req.on("error", (e) => reject(e));
+      const req = https.request(
+        {
+          hostname: "api.elevenlabs.io",
+          path: "/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM",
+          method: "POST",
+          headers: {
+            "xi-api-key": elevenlabsKey.value(),
+            "Content-Type": "application/json",
+          },
+        },
+        (res) => {
+          const chunks = [];
+          res.on("data", (chunk) => chunks.push(chunk));
+          res.on("end", () => {
+            const buffer = Buffer.concat(chunks);
+            resolve({ audio: buffer.toString("base64") });
+          });
+        }
+      );
+      req.on("error", reject);
       req.write(postData);
       req.end();
     });
