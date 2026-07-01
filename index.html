@@ -372,7 +372,92 @@
     // --- Helper functions ---
     const todayISO = () => new Date().toISOString().slice(0,10);
     function resolveAlias(barcode) { const clean = (barcode||'').trim().toUpperCase(); return aliases[clean] || clean; }
-    function playAlertChime() {
+    function normalizeVoiceSku(text) {
+    if (!text) return '';
+
+    const stopWords = [
+        'TONER', 'TONERS',
+        'CARTRIDGE', 'CARTRIDGES',
+        'UNIT', 'UNITS',
+        'GALLON', 'GALLONS',
+        'ITEM', 'ITEMS',
+        'PLEASE', 'THE', 'A', 'AN'
+    ];
+
+    let cleaned = String(text).toUpperCase().trim();
+    cleaned = cleaned.replace(/[^A-Z0-9]/g, ' ');
+
+    stopWords.forEach(word => {
+        const re = new RegExp(`\\b${word}\\b`, 'g');
+        cleaned = cleaned.replace(re, ' ');
+    });
+
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+    const skuLike = cleaned.match(/\b[A-Z]{1,4}\d{1,6}[A-Z0-9]*\b/);
+    if (skuLike) return skuLike[0];
+
+    return cleaned.replace(/\s+/g, '');
+}
+
+function buildVoiceInventoryItems() {
+    return Object.values(inventory).map(t => ({
+        sku: (t.code || '').toUpperCase(),
+        code: (t.code || '').toUpperCase(),
+        line: (t.line || '').toUpperCase(),
+        barcode: (t.barcode || t.code || '').toUpperCase(),
+        supplier: (t.supplier || '').toUpperCase()
+    }));
+       
+}
+function findInventoryItemBySku(input) {
+    const normalized = normalizeVoiceSku(input);
+    if (!normalized) return null;
+
+    const items = Object.values(inventory);
+
+    let exact = items.find(t => (t.code || '').toUpperCase() === normalized);
+    if (exact) return exact;
+
+    let barcodeMatch = items.find(t => (t.barcode || '').toUpperCase() === normalized);
+    if (barcodeMatch) return barcodeMatch;
+
+    let aliasResolved = resolveAlias(normalized);
+    if (aliasResolved && aliasResolved !== normalized) {
+        let aliasMatch = items.find(t => (t.code || '').toUpperCase() === aliasResolved);
+        if (aliasMatch) return aliasMatch;
+    }
+
+    // Exact match after removing spaces from stored code
+    let compactExact = items.find(t =>
+        (t.code || '').toUpperCase().replace(/\s+/g, '') === normalized
+    );
+    if (compactExact) return compactExact;
+
+    // Match numeric-only spoken input like "903" to ending of code like "MM903"
+    if (/^\d{2,6}$/.test(normalized)) {
+        let numericSuffix = items.find(t =>
+            (t.code || '').toUpperCase().match(/\d+$/)?.[0] === normalized
+        );
+        if (numericSuffix) return numericSuffix;
+    }
+
+    // Match compact spoken input like "MM903" against codes with spaces like "MM 903"
+    let compactContains = items.find(t =>
+        (t.code || '').toUpperCase().replace(/\s+/g, '').includes(normalized)
+    );
+    if (compactContains) return compactContains;
+
+    let startsWith = items.find(t => (t.code || '').toUpperCase().startsWith(normalized));
+    if (startsWith) return startsWith;
+
+    let contains = items.find(t => (t.code || '').toUpperCase().includes(normalized));
+    if (contains) return contains;
+
+    return null;
+}
+
+function playAlertChime() {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -1112,9 +1197,17 @@ async function processVoiceCommand(raw) {
     showToast('Thinking...', 'info');
 
     try {
-        const result = await voiceCommand({ transcript, lines, suppliers });
+        const inventoryItems = buildVoiceInventoryItems();
+
+        const result = await voiceCommand({
+            transcript,
+            lines,
+            suppliers,
+            inventoryItems
+        });
+
         const { intent, params } = result.data;
-        executeVoiceIntent(intent, params);
+        executeVoiceIntent(intent, params || {});
     } catch (e) {
         console.error('Voice error:', e);
         speak('Sorry, I had trouble. Please try again.');
@@ -1123,12 +1216,14 @@ async function processVoiceCommand(raw) {
 
 function executeVoiceIntent(intent, params) {
     console.log('Intent:', intent, 'Params:', JSON.stringify(params));
+
     switch(intent) {
         case 'query_stock': {
-    let sku = (params.sku || '').toUpperCase();
-    sku = sku.replace(/ TONERS?$| CARTRIDGES?$| UNITS?$/i, '').trim();
-    const toner = inventory[sku];
-            if (!toner) return speak(`Hmm, I couldn't find ${params.sku} in your inventory. Want to check another one?`);
+            const toner = findInventoryItemBySku(params.resolved_sku || params.sku || params.item_spoken || '');
+            if (!toner) {
+                return speak(`Hmm, I couldn't find ${params.sku || params.item_spoken || 'that toner'} in your inventory. Want to check another one?`);
+            }
+
             if (toner.stock < toner.minLevel) {
                 speak(`You've got ${toner.stock} units of ${toner.code} in ${toner.line}. That's below your minimum of ${toner.minLevel}. Might be time to reorder.`);
             } else {
@@ -1136,6 +1231,7 @@ function executeVoiceIntent(intent, params) {
             }
             break;
         }
+
         case 'list_low_stock': {
             const low = Object.values(inventory).filter(t => t.stock < t.minLevel);
             if (!low.length) return speak('Everything is fully stocked. Nothing to worry about right now.');
@@ -1146,44 +1242,89 @@ function executeVoiceIntent(intent, params) {
             speak(`You've got ${low.length} items running low. ${low.map(t => t.code).join(', ')}. Want me to help with a reorder?`);
             break;
         }
+
         case 'total_inventory_value': {
             const total = Object.values(inventory).reduce((s, t) => s + (t.stock * (t.cost || 0)), 0);
             speak(`Your total inventory is worth about ${Math.round(total).toLocaleString()} dollars.`);
             break;
         }
+
         case 'ship_item': {
-            const sku = (params.sku || '').toUpperCase();
-            const qty = params.quantity || 1;
-            const toner = inventory[sku];
-            if (!toner) return speak(`I don't have ${sku} in the system.`);
-            if (toner.stock < qty) return speak(`Sorry, you only have ${toner.stock} of ${sku}. You can't ship ${qty}.`);
-            speak(`Alright. Shipping ${qty} ${sku}. Does that sound right? Say yes to confirm.`);
-            confirmAction('out', qty, sku);
+            const toner = findInventoryItemBySku(params.resolved_sku || params.sku || params.item_spoken || '');
+            const qty = parseInt(params.quantity, 10) || 1;
+
+            if (!toner) {
+                return speak(`I don't have ${params.sku || params.item_spoken || 'that toner'} in the system.`);
+            }
+
+            if (toner.stock < qty) {
+                return speak(`Sorry, you only have ${toner.stock} of ${toner.code}. You can't ship ${qty}.`);
+            }
+
+            speak(`Alright. Shipping ${qty} ${toner.code}. Does that sound right? Say yes to confirm.`);
+            confirmAction('out', qty, toner.code);
             break;
         }
+
         case 'receive_item': {
-            const sku = (params.sku || '').toUpperCase();
-            const qty = params.quantity || 1;
-            if (!inventory[sku]) return speak(`${sku} isn't in your inventory yet. You'll need to add it through the receive form first.`);
-            speak(`Receiving ${qty} ${sku}. Confirm? Say yes or no.`);
-            confirmAction('in', qty, sku);
+            const toner = findInventoryItemBySku(params.sku || params.resolved_sku || params.item_spoken || '');
+            const qty = parseInt(params.quantity, 10) || 1;
+
+            if (!toner) {
+                return speak(`${params.sku || params.item_spoken || 'That toner'} isn't in your inventory yet. You'll need to add it through the receive form first.`);
+            }
+
+            speak(`Receiving ${qty} ${toner.code}. Confirm? Say yes or no.`);
+            confirmAction('in', qty, toner.code);
             break;
         }
+
         case 'navigate_to_tab': {
             const tab = params.tab;
             const tabBtn = document.querySelector(`#mainTabs .tab[data-tab="${tab}"]`);
             if (tabBtn) tabBtn.click();
-            const tabNames = { inventory: 'the main inventory', orders: 'your orders', history: 'transaction history', lowstock: 'low stock items' };
+            const tabNames = {
+                inventory: 'the main inventory',
+                orders: 'your orders',
+                history: 'transaction history',
+                lowstock: 'low stock items'
+            };
             speak(`Here's ${tabNames[tab] || tab}.`);
             break;
         }
-        case 'open_receive_modal': openReceiveModal(); speak('Receive form is open. Scan or type the toner code when ready.'); break;
-        case 'open_outgoing_modal': openOutgoingModal(); speak('Outgoing form is open. You can ship a toner from here.'); break;
-        case 'export_csv': exportCSV(); speak('CSV file downloaded.'); break;
-        case 'print_report': printReport(); speak('Report opened in a new tab.'); break;
-        case 'reorder_low_stock': reorderLowStock(); speak('Opening reorder form with your low stock items.'); break;
-        case 'help': speak('I can check stock levels, tell you what is running low, ship or receive items, open forms, switch tabs, export reports. What can I help with?'); break;
-        default: speak("I didn't quite catch that. Try asking about a specific toner, or say help to hear what I can do."); break;
+
+        case 'open_receive_modal':
+            openReceiveModal();
+            speak('Receive form is open. Scan or type the toner code when ready.');
+            break;
+
+        case 'open_outgoing_modal':
+            openOutgoingModal();
+            speak('Outgoing form is open. You can ship a toner from here.');
+            break;
+
+        case 'export_csv':
+            exportCSV();
+            speak('CSV file downloaded.');
+            break;
+
+        case 'print_report':
+            printReport();
+            speak('Report opened in a new tab.');
+            break;
+
+        case 'reorder_low_stock':
+            reorderLowStock();
+            speak('Opening reorder form with your low stock items.');
+            break;
+
+        case 'help':
+            speak('I can check stock levels, tell you what is running low, ship or receive items, open forms, switch tabs, export reports. What can I help with?');
+            break;
+
+        default:
+            speak("I didn't quite catch that. Try asking about a specific toner, or say help to hear what I can do.");
+            break;
     }
 }
 
@@ -1220,51 +1361,59 @@ function executeVoiceIntent(intent, params) {
     }
 
     function executeAction(action, qty, tonerCode) {
-        const toner = inventory[tonerCode];
-        if (!toner) {
-            speak(`${tonerCode} not found.`);
+    const toner = findInventoryItemBySku(tonerCode);
+
+    if (!toner) {
+        speak(`${tonerCode} not found.`);
+        return;
+    }
+
+    const code = toner.code;
+
+    if (action === 'out') {
+        if (toner.stock < qty) {
+            speak(`Only ${toner.stock} in stock.`);
             return;
         }
-        if (action === 'out') {
-            if (toner.stock < qty) {
-                speak(`Only ${toner.stock} in stock.`);
-                return;
-            }
-            db.collection('inventory').doc(tonerCode).update({ 
-                stock: firebase.firestore.FieldValue.increment(-qty), 
-                lastUpdated: todayISO() 
-            });
-            db.collection('history').add({
-                date: todayISO(),
-                type: 'out',
-                tonerCode: tonerCode,
-                quantity: qty,
-                customerOrSupplier: 'VOICE COMMAND',
-                line: toner.line,
-                costPerUnit: toner.cost || 0,
-                timestamp: Date.now()
-            });
-            speak(`Shipped ${qty} ${tonerCode}. ${toner.stock - qty} remaining.`);
-            showNotification('VOICE SHIP', `${qty} ${tonerCode} shipped.`, 'out');
-        } else if (action === 'in') {
-            db.collection('inventory').doc(tonerCode).update({ 
-                stock: firebase.firestore.FieldValue.increment(qty), 
-                lastUpdated: todayISO() 
-            });
-            db.collection('history').add({
-                date: todayISO(),
-                type: 'in',
-                tonerCode: tonerCode,
-                quantity: qty,
-                customerOrSupplier: 'VOICE COMMAND',
-                line: toner.line,
-                costPerUnit: toner.cost || 0,
-                timestamp: Date.now()
-            });
-            speak(`Received ${qty} ${tonerCode}. Now ${toner.stock + qty} in stock.`);
-            showNotification('VOICE RECEIVE', `${qty} ${tonerCode} received.`, 'in');
-        }
+
+        db.collection('inventory').doc(code).update({
+            stock: firebase.firestore.FieldValue.increment(-qty),
+            lastUpdated: todayISO()
+        });
+
+        db.collection('history').add({
+            date: todayISO(),
+            type: 'out',
+            tonerCode: code,
+            quantity: qty,
+            customerOrSupplier: 'VOICE COMMAND',
+            line: toner.line || '',
+            costPerUnit: toner.cost || 0,
+            timestamp: Date.now()
+        });
+
+        speak(`${qty} ${code} shipped successfully.`);
+    } else if (action === 'in') {
+        db.collection('inventory').doc(code).update({
+            stock: firebase.firestore.FieldValue.increment(qty),
+            lastUpdated: todayISO()
+        });
+
+        db.collection('history').add({
+            date: todayISO(),
+            type: 'in',
+            tonerCode: code,
+            quantity: qty,
+            customerOrSupplier: 'VOICE COMMAND',
+            line: toner.line || '',
+            costPerUnit: toner.cost || 0,
+            timestamp: Date.now()
+        });
+
+        speak(`${qty} ${code} received successfully.`);
     }
+}
+
 
     // Initial UI state
     (function initVoiceUI() {
