@@ -344,6 +344,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const voiceCommand = firebase.functions().httpsCallable('voiceCommand');
+    const speakCloud = firebase.functions().httpsCallable('speak');
     const DEFAULT_LINES = ['LINE 1', 'LINE 2', 'LINE 3'];
     let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
     let deviceMode = localStorage.getItem('tonerMode') || 'full';
@@ -1239,28 +1240,48 @@ const renderAliasList = () => {
         }
     };
 
-function speak(text) {
-    if (!voiceFeedbackOn) return;
+function speakBrowserFallback(text) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = 0.85;
         utterance.pitch = 0.9;
         utterance.volume = 1;
-        
+
         const voices = window.speechSynthesis.getVoices();
-        const deep = voices.find(v => 
-            v.lang.startsWith('en') && 
+        const deep = voices.find(v =>
+            v.lang.startsWith('en') &&
             (v.name.includes('Google UK English Male') ||
              v.name.includes('Microsoft David') ||
              v.name.includes('Daniel') ||
              v.name.includes('Male'))
         );
         if (deep) utterance.voice = deep;
-        
+
         window.speechSynthesis.speak(utterance);
     }
 }
+
+async function speak(text) {
+    if (!voiceFeedbackOn) return;
+
+    try {
+        const result = await speakCloud({ text });
+        const audioUrl = result.data && result.data.audioUrl;
+
+        if (audioUrl) {
+            const audio = new Audio(audioUrl);
+            audio.onerror = () => speakBrowserFallback(text);
+            await audio.play().catch(() => speakBrowserFallback(text));
+            return;
+        }
+    } catch (err) {
+        console.error('ElevenLabs speak failed, falling back:', err);
+    }
+
+    speakBrowserFallback(text);
+}
+
 // Override showNotification to also speak
 const originalShowNotification = showNotification;
 showNotification = function(title, message, type) {
