@@ -1113,47 +1113,81 @@ function renderLowStockLineTabs() {
         });
     };
 
-    const renderAliasList = () => {
-        const container = document.getElementById('aliasList');
-        container.innerHTML = '';
-        
-        let entries = Object.entries(aliases);
-        
-        if (aliasLineFilter !== '__ALL__') {
-            const lineToners = Object.values(inventory)
-                .filter(t => (t.line || '').toUpperCase() === aliasLineFilter.toUpperCase())
-                .map(t => t.code);
-            entries = entries.filter(([barcode, toner]) => lineToners.includes(toner));
-        }
-        
-        entries.forEach(([barcode, toner]) => {
-            const t = inventory[toner];
-            const lineName = t ? (t.line || '?').toUpperCase() : '?';
-            const row = document.createElement('div');
-            row.className = 'alias-row';
-            row.innerHTML = `
-                <span style="min-width:80px;font-size:0.7rem;color:var(--accent);font-weight:700;">${lineName}</span>
-                <input type="text" value="${barcode}" placeholder="BARCODE">
-                <input type="text" value="${toner}" placeholder="TONER NUMBER">
-                <button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>
-            `;
-            container.appendChild(row);
+const renderAliasLineTabs = () => {
+    const container = document.getElementById('aliasLineTabs');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const allBtn = document.createElement('span');
+    allBtn.className = 'line-tab' + (aliasLineFilter === '__ALL__' ? ' active' : '');
+    allBtn.textContent = 'ALL';
+    allBtn.style.cursor = 'pointer';
+    allBtn.onclick = () => { aliasLineFilter = '__ALL__'; renderAliasLineTabs(); renderAliasList(); };
+    container.appendChild(allBtn);
+    
+    lines.forEach(line => {
+        const btn = document.createElement('span');
+        btn.className = 'line-tab' + (aliasLineFilter.toUpperCase() === line.toUpperCase() ? ' active' : '');
+        btn.textContent = line.toUpperCase();
+        btn.style.cursor = 'pointer';
+        btn.onclick = () => { aliasLineFilter = line; renderAliasLineTabs(); renderAliasList(); };
+        container.appendChild(btn);
+    });
+};
+
+const renderAliasList = () => {
+    const container = document.getElementById('aliasList');
+    container.innerHTML = '';
+    
+    let entries = Object.entries(aliases);
+    
+    // Filter by paint line
+    if (aliasLineFilter !== '__ALL__') {
+        const lineToners = Object.values(inventory)
+            .filter(t => (t.line || '').toUpperCase() === aliasLineFilter.toUpperCase())
+            .map(t => t.code);
+        entries = entries.filter(([barcode, toner]) => lineToners.includes(toner));
+    }
+    
+    // Sort by shelf order (rowOrder)
+    if (rowOrder && rowOrder.length > 0) {
+        const orderMap = {};
+        rowOrder.forEach((code, index) => { orderMap[code] = index; });
+        entries.sort((a, b) => {
+            const posA = orderMap[a[1]] ?? 9999;
+            const posB = orderMap[b[1]] ?? 9999;
+            return posA - posB;
         });
-        
-        document.getElementById('addAliasBtn').onclick = () => {
-            const row = document.createElement('div');
-            row.className = 'alias-row';
-            row.innerHTML = `
-                <span style="min-width:80px;font-size:0.7rem;color:var(--accent);font-weight:700;"></span>
-                <input type="text" placeholder="BARCODE">
-                <input type="text" placeholder="TONER NUMBER">
-                <button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>
-            `;
-            container.appendChild(row);
-        };
-        
-        renderAliasLineTabs();
+    }
+    
+    entries.forEach(([barcode, toner]) => {
+        const t = inventory[toner];
+        const lineName = t ? (t.line || '?').toUpperCase() : '?';
+        const row = document.createElement('div');
+        row.className = 'alias-row';
+        row.innerHTML = `
+            <span style="min-width:80px;font-size:0.7rem;color:var(--accent);font-weight:700;">${lineName}</span>
+            <input type="text" value="${barcode}" placeholder="BARCODE">
+            <input type="text" value="${toner}" placeholder="TONER NUMBER">
+            <button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>
+        `;
+        container.appendChild(row);
+    });
+    
+    document.getElementById('addAliasBtn').onclick = () => {
+        const row = document.createElement('div');
+        row.className = 'alias-row';
+        row.innerHTML = `
+            <span style="min-width:80px;font-size:0.7rem;color:var(--accent);font-weight:700;"></span>
+            <input type="text" placeholder="BARCODE">
+            <input type="text" placeholder="TONER NUMBER">
+            <button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>
+        `;
+        container.appendChild(row);
     };
+    
+    renderAliasLineTabs();
+};
     window.saveAliases = async () => { const rows=document.querySelectorAll('#aliasList .alias-row');const newAliases={};rows.forEach(row=>{const barcode=row.querySelectorAll('input')[0].value.trim().toUpperCase();const toner=row.querySelectorAll('input')[1].value.trim().toUpperCase();if(barcode&&toner)newAliases[barcode]=toner;});await db.collection('settings').doc('config').update({aliases:newAliases});closeAliasModal();showToast('ALIASES SAVED','success'); };
     window.learnAliasesFromInventory = async () => { if (!confirm('CREATE ALIASES FOR ALL EXISTING TONERS WITH BARCODES?')) return; const newAliases = {...aliases}; let count = 0; Object.values(inventory).forEach(t => { if (t.barcode && t.barcode !== t.code && t.code) { if (!newAliases[t.barcode]) { newAliases[t.barcode] = t.code; count++; } } }); if (count > 0) { await db.collection('settings').doc('config').update({ aliases: newAliases }); showToast(`${count} ALIASES LEARNED!`,'success'); } else { showToast('NO NEW ALIASES TO LEARN.','error'); } };
     window.openSettingsModal = () => { document.getElementById('settingsModal').style.display='flex'; const lc = document.getElementById('lineSettingsFields'); lc.innerHTML = ''; lines.forEach(l=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${l.toUpperCase()}" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;">`; lc.appendChild(d); }); document.getElementById('addLineBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.marginBottom='8px'; d.innerHTML='<input type="text" placeholder="NEW LINE NAME" style="width:100%;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;">'; lc.appendChild(d); }; const sc = document.getElementById('supplierList'); sc.innerHTML = ''; suppliers.forEach(s=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.style.marginBottom='8px'; d.innerHTML=`<input type="text" value="${(s.name||'').toUpperCase()}" placeholder="NAME" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="email" value="${s.email||''}" placeholder="EMAIL" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>`; sc.appendChild(d); }); document.getElementById('addSupplierBtn').onclick = ()=>{ const d=document.createElement('div'); d.style.display='flex'; d.style.gap='8px'; d.innerHTML='<input type="text" placeholder="SUPPLIER NAME" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-weight:700;text-transform:uppercase;"><input type="email" placeholder="EMAIL" style="flex:1;padding:10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);"><button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="color:#e74c3c;">X</button>'; sc.appendChild(d); }; document.getElementById('deviceMode').value = localStorage.getItem('tonerMode')||'full'; };
