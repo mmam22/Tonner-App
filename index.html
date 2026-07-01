@@ -349,6 +349,7 @@
     let deviceMode = localStorage.getItem('tonerMode') || 'full';
     let currentLineFilter = '__ALL__';
     let lowStockLineFilter = '__ALL__';
+    let aliasLineFilter = '__ALL__';
     let fastScanMode = false;
 
     // Fast-scan merge buffer
@@ -1090,8 +1091,8 @@ function renderLowStockLineTabs() {
     renderAliasList(); 
 };
     window.closeAliasModal = () => document.getElementById('aliasModal').style.display='none';
-        let aliasLineFilter = '__ALL__';
-
+     let lowStockLineFilter = '__ALL__';
+       
     const renderAliasLineTabs = () => {
         const container = document.getElementById('aliasLineTabs');
         container.innerHTML = '';
@@ -1113,27 +1114,6 @@ function renderLowStockLineTabs() {
         });
     };
 
-const renderAliasLineTabs = () => {
-    const container = document.getElementById('aliasLineTabs');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    const allBtn = document.createElement('span');
-    allBtn.className = 'line-tab' + (aliasLineFilter === '__ALL__' ? ' active' : '');
-    allBtn.textContent = 'ALL';
-    allBtn.style.cursor = 'pointer';
-    allBtn.onclick = () => { aliasLineFilter = '__ALL__'; renderAliasLineTabs(); renderAliasList(); };
-    container.appendChild(allBtn);
-    
-    lines.forEach(line => {
-        const btn = document.createElement('span');
-        btn.className = 'line-tab' + (aliasLineFilter.toUpperCase() === line.toUpperCase() ? ' active' : '');
-        btn.textContent = line.toUpperCase();
-        btn.style.cursor = 'pointer';
-        btn.onclick = () => { aliasLineFilter = line; renderAliasLineTabs(); renderAliasList(); };
-        container.appendChild(btn);
-    });
-};
 
 const renderAliasList = () => {
     const container = document.getElementById('aliasList');
