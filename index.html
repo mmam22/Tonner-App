@@ -178,6 +178,7 @@
         </div>
     </div>
     <div class="panel" id="panel-lowstock">
+        <div class="line-tabs" id="lowStockLineTabs"></div>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>LINE</th><th>TONER NUMBER</th><th>COLOR</th><th>STOCK</th><th>MIN</th><th>AVG COST</th><th>DEFICIT</th></tr></thead>
@@ -347,6 +348,7 @@
     let inventory = {}, history = [], lines = [...DEFAULT_LINES], suppliers = [], ordersList = [], aliases = {}, rowOrder = [], editingCell = null;
     let deviceMode = localStorage.getItem('tonerMode') || 'full';
     let currentLineFilter = '__ALL__';
+    let lowStockLineFilter = '__ALL__';
     let fastScanMode = false;
 
     // Fast-scan merge buffer
@@ -914,14 +916,43 @@ function playAlertChime() {
 
     // --- Low Stock rendering ---
     function renderLowStock() {
-        const low = Object.values(inventory).filter(t => t.stock < t.minLevel);
-        const tbody = document.getElementById('lowStockBody'); tbody.innerHTML = '';
-        low.forEach(t => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${(t.line||'').toUpperCase()}</td><td style="font-weight:700;">${t.code}</td><td>${t.color}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.minLevel-t.stock}</td>`;
-            tbody.appendChild(tr);
-        });
-    }
+    const low = Object.values(inventory).filter(t => {
+        if (t.stock >= t.minLevel) return false;
+        if (lowStockLineFilter === '__ALL__') return true;
+        return (t.line || '').toUpperCase() === lowStockLineFilter.toUpperCase();
+    });
+    const tbody = document.getElementById('lowStockBody');
+    tbody.innerHTML = '';
+    low.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${(t.line||'').toUpperCase()}</td><td style="font-weight:700;">${t.code}</td><td>${t.color}</td><td style="font-weight:700;">${t.stock}</td><td>${t.minLevel}</td><td>$${(t.cost||0).toFixed(2)}</td><td>${t.minLevel-t.stock}</td>`;
+        tbody.appendChild(tr);
+    });
+    renderLowStockLineTabs();
+}
+
+function renderLowStockLineTabs() {
+    const container = document.getElementById('lowStockLineTabs');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const allBtn = document.createElement('span');
+    allBtn.className = 'line-tab' + (lowStockLineFilter === '__ALL__' ? ' active' : '');
+    allBtn.textContent = 'ALL';
+    allBtn.style.cursor = 'pointer';
+    allBtn.onclick = () => { lowStockLineFilter = '__ALL__'; renderLowStock(); };
+    container.appendChild(allBtn);
+    
+    lines.forEach(line => {
+        const btn = document.createElement('span');
+        btn.className = 'line-tab' + (lowStockLineFilter.toUpperCase() === line.toUpperCase() ? ' active' : '');
+        btn.textContent = line.toUpperCase();
+        btn.style.cursor = 'pointer';
+        btn.onclick = () => { lowStockLineFilter = line; renderLowStock(); };
+        container.appendChild(btn);
+    });
+}
+    
 
     // --- Charts ---
     function drawBarChart() {
