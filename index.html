@@ -611,22 +611,36 @@ function playAlertChime() {
 
     // --- Drag-to-reorder save (resilient) ---
     async function saveRowOrder() {
-        const newOrder = [];
-        document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => {
-            const code = r.getAttribute('data-code');
-            if (code) newOrder.push(code);
-        });
-        if (newOrder.length === 0) return;
-        try {
-            await db.collection('settings').doc('config').update({ rowOrder: newOrder });
-            rowOrder = newOrder;
-            showToast('✅ Order saved!', 'success');
-        } catch (err) {
-            showToast('❌ Save failed', 'error');
-            console.error(err);
-            refreshUI();
-        }
+    // Get currently visible codes (from the active line tab)
+    const visibleCodes = [];
+    document.querySelectorAll('#inventoryBody tr[data-code]').forEach(r => {
+        const code = r.getAttribute('data-code');
+        if (code) visibleCodes.push(code);
+    });
+    if (visibleCodes.length === 0) return;
+    
+    // Build the new full order: keep non-visible codes in their existing positions,
+    // then slot visible codes in the order they appear on screen
+    const visibleSet = new Set(visibleCodes);
+    const existingOrder = rowOrder || [];
+    const nonVisible = existingOrder.filter(code => !visibleSet.has(code) && inventory[code]);
+    
+    // Merge: visible codes first in their new order, then non-visible in their old order
+    const newOrder = [...visibleCodes];
+    nonVisible.forEach(code => {
+        if (!newOrder.includes(code)) newOrder.push(code);
+    });
+    
+    try {
+        await db.collection('settings').doc('config').update({ rowOrder: newOrder });
+        rowOrder = newOrder;
+        showToast('✅ Order saved!', 'success');
+    } catch (err) {
+        showToast('❌ Save failed', 'error');
+        console.error(err);
+        refreshUI();
     }
+}
 
     // --- Quick add toner ---
     window.quickAddToner = async () => {
